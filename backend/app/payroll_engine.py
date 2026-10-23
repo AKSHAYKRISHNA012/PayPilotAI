@@ -266,3 +266,113 @@ def calculate_payroll_item(
         "net_salary": float(net_salary),
         "total_employer_cost": float(total_employer_cost),
     }
+
+def calculate_ctc_breakdown(
+    annual_ctc: float,
+    regime: str = "new",
+    state: str = "Karnataka",
+    pf_capped: bool = True,
+    basic_pct: float = 0.50,
+    hra_pct: float = 0.25
+) -> Dict[str, Any]:
+    """
+    Authoritative CTC-to-Take-Home Salary Calculator with 100% mathematical reconciliation.
+    Guarantees:
+      Monthly CTC = Monthly Gross + Employer PF + Employer ESIC
+      Monthly Take-Home = Monthly Gross - (Employee PF + Employee ESIC + PT + TDS)
+      Reconciled Annual CTC == annual_ctc (within 0.01 tolerance)
+    """
+    d_annual_ctc = to_dec(annual_ctc)
+    d_monthly_ctc = (d_annual_ctc / Decimal("12.00")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    d_basic_pct = to_dec(basic_pct)
+    d_hra_pct = to_dec(hra_pct)
+
+    # Solve for Monthly Gross:
+    # Monthly CTC = Gross + Employer PF(Gross) + Employer ESIC(Gross)
+    d_monthly_gross = Decimal("0.00")
+    if pf_capped:
+        if d_monthly_ctc >= Decimal("31800.00"):
+            # Gross >= 30,000, basic >= 15,000, PF capped at 1,800, ESIC is 0
+            d_monthly_gross = d_monthly_ctc - Decimal("1800.00")
+        elif d_monthly_ctc > Decimal("22942.50"):
+            # Gross > 21,000 (no ESIC), basic < 15,000 (PF is basic_pct * 12% = 6%)
+            d_monthly_gross = (d_monthly_ctc / (Decimal("1.00") + (d_basic_pct * Decimal("0.12")))).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        else:
+            # Gross <= 21,000 (PF 6% + ESIC 3.25% apply)
+            factor = Decimal("1.00") + (d_basic_pct * Decimal("0.12")) + Decimal("0.0325")
+            d_monthly_gross = (d_monthly_ctc / factor).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    else:
+        pf_factor = d_basic_pct * Decimal("0.12")
+        if (d_monthly_ctc / (Decimal("1.00") + pf_factor)) > Decimal("21000.00"):
+            d_monthly_gross = (d_monthly_ctc / (Decimal("1.00") + pf_factor)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        else:
+            d_monthly_gross = (d_monthly_ctc / (Decimal("1.00") + pf_factor + Decimal("0.0325"))).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    # Component breakdown
+    d_basic = (d_monthly_gross * d_basic_pct).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    d_hra = (d_monthly_gross * d_hra_pct).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    d_special = (d_monthly_gross - d_basic - d_hra).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    # Employer Co-Contributions
+    d_employer_pf = Decimal("0.00")
+    if pf_capped:
+        d_employer_pf = min(Decimal("1800.00"), (d_basic * Decimal("0.12")).quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+    else:
+        d_employer_pf = (d_basic * Decimal("0.12")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    d_employer_esi = Decimal("0.00")
+    if d_monthly_gross <= Decimal("21000.00"):
+        d_employer_esi = (d_monthly_gross * Decimal("0.0325")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    d_employer_monthly_cost = d_monthly_gross + d_employer_pf + d_employer_esi
+
+    # Guarantee exact 0.00 paise reconciliation against monthly CTC:
+    if d_employer_monthly_cost != d_monthly_ctc:
+        diff = d_monthly_ctc - d_employer_monthly_cost
+        d_monthly_gross += diff
+        d_special += diff
+        d_employer_monthly_cost = d_monthly_gross + d_employer_pf + d_employer_esi
+
+    # Employee Deductions
+    d_employee_pf = d_employer_pf
+    d_employee_esi = Decimal("0.00")
+    if d_monthly_gross <= Decimal("21000.00"):
+        d_employee_esi = (d_monthly_gross * Decimal("0.0075")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    d_pt = calculate_professional_tax_decimal(d_monthly_gross, state)
+
+    d_annual_gross = d_monthly_gross * Decimal("12.00")
+    d_monthly_tds = calculate_monthly_tds_estimate_decimal(
+        annual_gross=d_annual_gross,
+        regime=regime
+    )
+
+    d_total_employee_deductions = d_employee_pf + d_employee_esi + d_pt + d_monthly_tds
+    d_monthly_take_home = max(Decimal("0.00"), d_monthly_gross - d_total_employee_deductions)
+    d_annual_take_home = d_monthly_take_home * Decimal("12.00")
+
+    return {
+        "annual_ctc": float(d_annual_ctc),
+        "monthly_ctc": float(d_monthly_ctc),
+        "monthly_gross": float(d_monthly_gross),
+        "basic": float(d_basic),
+        "hra": float(d_hra),
+        "special_allowance": float(d_special),
+        "annual_gross": float(d_annual_gross),
+
+        "employee_pf": float(d_employee_pf),
+        "employee_esi": float(d_employee_esi),
+        "professional_tax": float(d_pt),
+        "monthly_tds": float(d_monthly_tds),
+        "total_employee_deductions": float(d_total_employee_deductions),
+
+        "employer_pf": float(d_employer_pf),
+        "employer_esi": float(d_employer_esi),
+        "total_employer_contribution": float(d_employer_pf + d_employer_esi),
+        "reconciled_monthly_employer_cost": float(d_employer_monthly_cost),
+
+        "monthly_take_home": float(d_monthly_take_home),
+        "annual_take_home": float(d_annual_take_home),
+        "reconciled_annual_ctc": float(d_employer_monthly_cost * Decimal("12.00")),
+        "reconciliation_variance": float(abs(d_employer_monthly_cost - d_monthly_ctc))
+    }

@@ -8,6 +8,7 @@ import { ToastProvider, toast } from './components/Toast';
 import { LegalCenterModal, LegalTab } from './components/LegalCenterModal';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { SessionLockModal } from './components/SessionLockModal';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { MarketingLandingPage } from './pages/MarketingLandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { IntelligenceCenterPage } from './pages/IntelligenceCenterPage';
@@ -52,6 +53,7 @@ export const App: React.FC = () => {
   const [legalTab, setLegalTab] = useState<LegalTab>('privacy');
   const [isSessionLocked, setIsSessionLocked] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
   useEffect(() => {
     initApp();
@@ -64,6 +66,15 @@ export const App: React.FC = () => {
       }
     };
     window.addEventListener('hashchange', handleHash);
+
+    // Global Command Palette Shortcut: Cmd+K / Ctrl+K
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
 
     // Network resilience listeners
     const handleOnline = () => {
@@ -92,6 +103,7 @@ export const App: React.FC = () => {
 
     return () => {
       window.removeEventListener('hashchange', handleHash);
+      window.removeEventListener('keydown', handleGlobalKeyDown);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       userActivityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
@@ -234,6 +246,7 @@ export const App: React.FC = () => {
             setIsAuthModalOpen(true);
           }}
           onLockSession={() => setIsSessionLocked(true)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           isMobileMenuOpen={isMobileMenuOpen}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
@@ -387,6 +400,21 @@ export const App: React.FC = () => {
             setAuthModalMode('login');
             setIsAuthModalOpen(true);
           }}
+        />
+
+        {/* Global Command Palette (Cmd+K / Ctrl+K) */}
+        <CommandPaletteModal
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigateTab={setCurrentTab}
+          onSwitchUser={handleSwitchUser}
+          onLockSession={() => setIsSessionLocked(true)}
+          onOpenLegal={() => {
+            setLegalTab('privacy');
+            setIsLegalModalOpen(true);
+          }}
+          demoUsers={demoUsers}
+          currentUser={currentUser}
         />
       </div>
     </ToastProvider>

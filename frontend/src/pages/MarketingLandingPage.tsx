@@ -10,6 +10,7 @@ import {
 import { LegalCenterModal, LegalTab } from '../components/LegalCenterModal';
 import { CookieBanner } from '../components/CookieBanner';
 import { toast } from '../components/Toast';
+import { calculateSalaryBreakdown } from '../services/salaryCalculator';
 
 interface MarketingLandingPageProps {
   onEnterApp: () => void;
@@ -29,6 +30,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
   const [calcAnnualCtc, setCalcAnnualCtc] = useState<number>(1200000);
   const [calcRegime, setCalcRegime] = useState<'new' | 'old'>('new');
   const [calcState, setCalcState] = useState<string>('Karnataka');
+  const [calcPfCapped, setCalcPfCapped] = useState<boolean>(true);
 
   // Legal Modal & Compliance States
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
@@ -47,51 +49,15 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Compute live breakdown for the interactive calculator
-  const monthlyGross = Math.round(calcAnnualCtc / 12);
-  const basicSalary = Math.round(monthlyGross * 0.5);
-  const hra = Math.round(monthlyGross * 0.25);
-  const specialAllowance = monthlyGross - basicSalary - hra;
-
-  // EPF: 12% capped at ₹1,800 or actual
-  const employeePf = Math.min(1800, Math.round(basicSalary * 0.12));
-
-  // PT: state specific
-  let professionalTax = 0;
-  if (calcState === 'Karnataka' && monthlyGross > 15000) professionalTax = 200;
-  else if (calcState === 'Maharashtra') professionalTax = 200;
-  else if (calcState === 'Telangana' && monthlyGross > 20000) professionalTax = 200;
-  else if (calcState === 'Delhi') professionalTax = 0;
-
-  // Estimated Monthly TDS (FY 2026-27 New Tax Regime)
-  let estimatedMonthlyTds = 0;
-  const taxableAnnual = Math.max(0, calcAnnualCtc - 75000); // Standard deduction ₹75,000
-  if (calcRegime === 'new') {
-    if (taxableAnnual <= 700000) {
-      estimatedMonthlyTds = 0; // 87A rebate
-    } else {
-      let tax = 0;
-      if (taxableAnnual > 1500000) tax += (taxableAnnual - 1500000) * 0.30 + 150000;
-      else if (taxableAnnual > 1200000) tax += (taxableAnnual - 1200000) * 0.20 + 90000;
-      else if (taxableAnnual > 1000000) tax += (taxableAnnual - 1000000) * 0.15 + 60000;
-      else if (taxableAnnual > 700000) tax += (taxableAnnual - 700000) * 0.10 + 30000;
-      else if (taxableAnnual > 300000) tax += (taxableAnnual - 300000) * 0.05;
-      tax = tax * 1.04; // 4% cess
-      estimatedMonthlyTds = Math.round(tax / 12);
-    }
-  } else {
-    // Old regime approximation
-    const oldTaxable = Math.max(0, calcAnnualCtc - 50000 - 150000);
-    let tax = 0;
-    if (oldTaxable > 1000000) tax += (oldTaxable - 1000000) * 0.30 + 112500;
-    else if (oldTaxable > 500000) tax += (oldTaxable - 500000) * 0.20 + 12500;
-    else if (oldTaxable > 250000) tax += (oldTaxable - 250000) * 0.05;
-    tax = tax * 1.04;
-    estimatedMonthlyTds = Math.round(tax / 12);
-  }
-
-  const totalMonthlyDeductions = employeePf + professionalTax + estimatedMonthlyTds;
-  const estimatedTakeHome = Math.max(0, monthlyGross - totalMonthlyDeductions);
+  // Compute 100% reconciled statutory breakdown from calculation engine
+  const breakdown = calculateSalaryBreakdown({
+    annualCtc: calcAnnualCtc,
+    regime: calcRegime,
+    state: calcState,
+    pfCapped: calcPfCapped,
+    basicPercentage: 0.50,
+    hraPercentage: 0.25
+  });
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -527,12 +493,12 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
       <section id="calculator" className="py-20 bg-slate-50 border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-            <h2 className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Interactive Statutory Utility</h2>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Statutory Calculation Engine</h2>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
               Indian CTC to Net Take-Home Calculator
             </p>
             <p className="text-xs text-slate-500">
-              Test our statutory engine live. Instant salary structuring according to the FY 2026-27 tax regime.
+              Deterministic, 100% reconciled compensation breakdown codified for Union Budget FY 2026-27 Section 115BAC.
             </p>
           </div>
 
@@ -553,10 +519,25 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                   onChange={(e) => setCalcAnnualCtc(Number(e.target.value))}
                   className="w-full accent-indigo-600 cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                  <span>₹3.0 Lakhs</span>
-                  <span>₹25.0 Lakhs</span>
-                  <span>₹50.0 Lakhs</span>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>₹3.0L</span>
+                  <div className="flex gap-1.5">
+                    {[600000, 1200000, 2500000, 5000000].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setCalcAnnualCtc(preset)}
+                        className={`cursor-pointer px-1.5 py-0.5 rounded border text-[9px] font-mono transition-colors ${
+                          calcAnnualCtc === preset
+                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {preset >= 10000000 ? `${preset / 10000000}Cr` : `${preset / 100000}L`}
+                      </button>
+                    ))}
+                  </div>
+                  <span>₹50.0L</span>
                 </div>
               </div>
 
@@ -567,7 +548,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                     onClick={() => setCalcRegime('new')}
                     className={`cursor-pointer p-2.5 rounded-lg border text-left transition-colors ${
                       calcRegime === 'new'
-                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-semibold'
+                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-semibold shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -579,7 +560,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                     onClick={() => setCalcRegime('old')}
                     className={`cursor-pointer p-2.5 rounded-lg border text-left transition-colors ${
                       calcRegime === 'old'
-                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-semibold'
+                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-semibold shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -589,18 +570,54 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-900 block mb-1.5">State of Employment (PT Schedule)</label>
-                <select
-                  value={calcState}
-                  onChange={(e) => setCalcState(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 bg-white outline-none cursor-pointer"
-                >
-                  <option value="Karnataka">Karnataka (₹200 / month)</option>
-                  <option value="Maharashtra">Maharashtra (₹200 / ₹300 in Feb)</option>
-                  <option value="Telangana">Telangana (₹200 / month)</option>
-                  <option value="Delhi">Delhi (Zero PT State)</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-900 block mb-1.5">Employment State (PT)</label>
+                  <select
+                    value={calcState}
+                    onChange={(e) => setCalcState(e.target.value)}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 bg-white outline-none cursor-pointer"
+                  >
+                    <option value="Karnataka">Karnataka (₹200/mo)</option>
+                    <option value="Maharashtra">Maharashtra (₹200 / ₹300 Feb)</option>
+                    <option value="Telangana">Telangana (₹200/mo)</option>
+                    <option value="Gujarat">Gujarat (₹200/mo)</option>
+                    <option value="West Bengal">West Bengal (₹200/mo)</option>
+                    <option value="Delhi">Delhi (Zero PT State)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-900 block mb-1.5">Provident Fund (EPF)</label>
+                  <select
+                    value={calcPfCapped ? 'capped' : 'actual'}
+                    onChange={(e) => setCalcPfCapped(e.target.value === 'capped')}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 bg-white outline-none cursor-pointer"
+                  >
+                    <option value="capped">Statutory Capped (₹1,800/mo)</option>
+                    <option value="actual">Actual Basic (12% Uncapped)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Assumptions & Compliance Transparency */}
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg text-[11px] text-slate-500 space-y-1">
+                <div className="flex justify-between font-medium text-slate-700">
+                  <span>Fiscal Assessment Year:</span>
+                  <span className="font-mono text-slate-900">{breakdown.metadata.financialYear}</span>
+                </div>
+                <div className="flex justify-between font-medium text-slate-700">
+                  <span>Standard Deduction:</span>
+                  <span className="font-mono text-slate-900">₹{breakdown.metadata.standardDeductionAmount.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between font-medium text-slate-700">
+                  <span>EPF Wage Ceiling:</span>
+                  <span className="font-mono text-slate-900">₹{breakdown.metadata.epfWageCeiling.toLocaleString('en-IN')}/mo (12% = ₹1,800)</span>
+                </div>
+                <div className="flex justify-between font-medium text-slate-700">
+                  <span>ESIC Wage Threshold:</span>
+                  <span className="font-mono text-slate-900">&le; ₹{breakdown.metadata.esicThresholdMonthly.toLocaleString('en-IN')}/mo</span>
+                </div>
               </div>
             </div>
 
@@ -609,12 +626,14 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated Monthly Take-Home</span>
                 <p className="text-3xl font-extrabold text-slate-900 font-mono mt-1">
-                  {formatINR(estimatedTakeHome)}
+                  {formatINR(breakdown.monthlyTakeHome)}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 mt-1">
-                  <span>Gross: <strong className="text-slate-800">{formatINR(monthlyGross)}/mo</strong></span>
+                  <span>Gross: <strong className="text-slate-800 font-mono">{formatINR(breakdown.monthlyGross)}/mo</strong></span>
                   <span>&bull;</span>
-                  <span>Annualized In-Hand: <strong className="text-indigo-700">{formatINR(estimatedTakeHome * 12)}</strong></span>
+                  <span>Annual In-Hand: <strong className="text-indigo-700 font-mono">{formatINR(breakdown.annualTakeHome)}</strong></span>
+                  <span>&bull;</span>
+                  <span>CTC Reconciled: <strong className="text-slate-800 font-mono">{formatINR(breakdown.reconciledAnnualEmployerCost)}</strong></span>
                 </div>
               </div>
 
@@ -622,46 +641,76 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <div className="space-y-2 text-xs border-t border-slate-200 pt-3">
                 <div className="flex justify-between text-slate-600">
                   <span>Basic Wage (50% of Gross)</span>
-                  <span className="font-mono font-medium text-slate-800">{formatINR(basicSalary)}</span>
+                  <span className="font-mono font-medium text-slate-800">{formatINR(breakdown.basicSalary)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>House Rent Allowance (HRA)</span>
-                  <span className="font-mono font-medium text-slate-800">{formatINR(hra)}</span>
+                  <span>House Rent Allowance (HRA, 25%)</span>
+                  <span className="font-mono font-medium text-slate-800">{formatINR(breakdown.hra)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Special Allowance</span>
-                  <span className="font-mono font-medium text-slate-800">{formatINR(specialAllowance)}</span>
+                  <span className="font-mono font-medium text-slate-800">{formatINR(breakdown.specialAllowance)}</span>
                 </div>
 
                 <div className="pt-2 border-t border-slate-200/80">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Employee Monthly Withholdings</p>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Employee Monthly Withholdings</p>
+                    <span className="text-[10px] font-mono font-bold text-red-600">-{formatINR(breakdown.totalMonthlyDeductions)}</span>
+                  </div>
                   <div className="space-y-1">
                     <div className="flex justify-between text-slate-600">
-                      <span>Employee PF (12% capped at ₹1,800)</span>
-                      <span className="font-mono font-medium text-red-600">-{formatINR(employeePf)}</span>
+                      <span>Employee PF (12%{calcPfCapped ? ' capped at ₹1,800' : ' uncapped'})</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(breakdown.employeePf)}</span>
                     </div>
+                    {breakdown.employeeEsi > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Employee ESI (0.75% for Gross &le; ₹21k)</span>
+                        <span className="font-mono font-medium text-red-600">-{formatINR(breakdown.employeeEsi)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-slate-600">
                       <span>Professional Tax ({calcState})</span>
-                      <span className="font-mono font-medium text-red-600">-{formatINR(professionalTax)}</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(breakdown.professionalTax)}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
-                      <span>Monthly TDS (Section 192 Tax Withheld)</span>
-                      <span className="font-mono font-medium text-red-600">-{formatINR(estimatedMonthlyTds)}</span>
+                      <span>Monthly TDS (Section 192 Income Tax)</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(breakdown.monthlyTds)}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t border-slate-200/80">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Employer Co-Contributions (CTC Included)</p>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Employer Contributions (Reconciled in CTC)</p>
+                    <span className="text-[10px] font-mono font-bold text-slate-700">+{formatINR(breakdown.totalMonthlyEmployerContribution)}</span>
+                  </div>
                   <div className="space-y-1">
                     <div className="flex justify-between text-slate-600">
-                      <span>Employer PF (3.67% EPF + 8.33% EPS)</span>
-                      <span className="font-mono font-medium text-slate-800">+{formatINR(employeePf)}</span>
+                      <span>Employer PF ({breakdown.employerPfEps > 0 ? `EPS ₹${breakdown.employerPfEps} + EPF ₹${breakdown.employerPfEpf}` : '12%'})</span>
+                      <span className="font-mono font-medium text-slate-800">+{formatINR(breakdown.employerPf)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Employer Total Monthly CTC Cost</span>
-                      <span className="font-mono font-bold text-slate-900">{formatINR(monthlyGross + employeePf)}</span>
+                    {breakdown.employerEsi > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Employer ESI (3.25%)</span>
+                        <span className="font-mono font-medium text-slate-800">+{formatINR(breakdown.employerEsi)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-slate-700 font-semibold pt-1 border-t border-slate-200">
+                      <span>Total Reconciled Monthly Cost (Gross + Co-Contrib)</span>
+                      <span className="font-mono text-slate-900">{formatINR(breakdown.reconciledMonthlyEmployerCost)}</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Annual Itemized Tax Summary */}
+                <div className="pt-2 border-t border-slate-200/80 text-[11px] text-slate-500">
+                  <div className="flex justify-between">
+                    <span>Annual Taxable Income (after ₹{breakdown.metadata.standardDeductionAmount / 1000}k std ded):</span>
+                    <span className="font-mono font-medium text-slate-800">{formatINR(breakdown.taxableIncome)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Annual Tax Liability (with 4% cess):</span>
+                    <span className="font-mono font-medium text-slate-800">{formatINR(breakdown.totalAnnualTax)}</span>
                   </div>
                 </div>
               </div>
@@ -674,7 +723,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                   Configure Salary Structures in PayPilot AI &rarr;
                 </button>
                 <p className="text-[10px] text-slate-400 text-center leading-tight">
-                  Estimates derived from FY 2026-27 CBDT Section 115BAC rules and state PT schedules. For operational planning; not guaranteed tax/legal advice.
+                  {breakdown.metadata.disclaimer} Effective: {breakdown.metadata.effectiveDate}.
                 </p>
               </div>
             </div>

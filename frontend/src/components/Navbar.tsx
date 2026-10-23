@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import {
   Shield, UserCheck, Users, RotateCcw,
-  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon, Lock, Calendar
+  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon, Lock, Calendar, Search
 } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -16,6 +16,7 @@ interface NavbarProps {
   onNavigateLanding?: () => void;
   onOpenAuth?: () => void;
   onLockSession?: () => void;
+  onOpenCommandPalette?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -30,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigateLanding,
   onOpenAuth,
   onLockSession,
+  onOpenCommandPalette,
   isMobileMenuOpen = false,
   onToggleMobileMenu,
 }) => {
@@ -142,6 +144,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
+        {/* Global Command Palette Trigger */}
+        {onOpenCommandPalette && (
+          <button
+            onClick={onOpenCommandPalette}
+            className="cursor-pointer hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors text-xs"
+            title="Press ⌘K or Ctrl+K to search commands & employees"
+          >
+            <Search className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-500 font-medium">Jump to...</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-400 shadow-2xs">
+              ⌘K
+            </kbd>
+          </button>
+        )}
+
         {/* Subscription Plan Badge */}
         {onOpenSubscription && (
           <button
