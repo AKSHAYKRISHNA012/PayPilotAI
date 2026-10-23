@@ -118,8 +118,8 @@ export const App: React.FC = () => {
   };
 
   const handleSwitchUser = async (userId: string) => {
-    setApiUserId(userId);
     try {
+      await api.switchDemoUser(userId);
       const me = await api.getMe();
       setCurrentUser(me);
       // If employee, redirect to dashboard or allowed tabs

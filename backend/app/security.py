@@ -82,10 +82,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     if token.startswith("Bearer "):
         token = token[7:].strip()
     
-    # Handle demo tokens (e.g., token_user_001) for fast demo profile switching
-    if token.startswith("token_"):
-        return {"sub": token.replace("token_", ""), "is_demo": True}
-        
+    # Enforce strict RFC 7519 HMAC-SHA256 signature verification
     parts = token.split('.')
     if len(parts) != 3:
         raise HTTPException(
@@ -135,23 +132,18 @@ def get_current_authenticated_user(
     """
     user_id = None
     if authorization:
-        try:
-            payload = decode_access_token(authorization)
-            user_id = payload.get("sub") or payload.get("user_id")
-        except HTTPException:
-            if not x_user_id:
-                raise
-    
-    if not user_id and x_user_id:
+        payload = decode_access_token(authorization)
+        user_id = payload.get("sub") or payload.get("user_id")
+    elif settings.APP_ENV != "production" and x_user_id:
         user_id = x_user_id
 
-    user = None
-    if user_id:
-        user = db.query(User).filter(User.id == user_id).first()
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please provide a valid Bearer token."
+        )
 
-    if not user:
-        # Fallback to demo default admin for seamless investor test-drive
-        user = db.query(User).filter(User.role.in_(["admin", "owner"])).first()
+    user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(

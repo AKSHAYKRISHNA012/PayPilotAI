@@ -102,7 +102,16 @@ def apply_leave(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    target_emp_id = req.employee_id or user.employee_id
+    if user.role == "employee":
+        if req.employee_id and req.employee_id != user.employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Employees are only permitted to submit leave applications on their own behalf."
+            )
+        target_emp_id = user.employee_id
+    else:
+        target_emp_id = req.employee_id or user.employee_id
+
     if not target_emp_id:
         raise HTTPException(status_code=400, detail="Employee ID required")
 

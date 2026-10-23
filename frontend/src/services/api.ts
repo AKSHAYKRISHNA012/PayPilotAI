@@ -13,14 +13,37 @@ import {
 } from './mockData';
 
 let currentUserId: string = 'usr_admin';
+let currentToken: string = typeof localStorage !== 'undefined' ? localStorage.getItem('paypilot_token') || '' : '';
 
-export const setApiUserId = (userId: string) => {
+export const setApiToken = (token: string) => {
+  currentToken = token;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('paypilot_token', token);
+  }
+};
+
+export const getApiToken = (): string => {
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('paypilot_token') || currentToken;
+  }
+  return currentToken;
+};
+
+export const setApiUserId = (userId: string, token?: string) => {
   currentUserId = userId;
-  localStorage.setItem('paypilot_user_id', userId);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('paypilot_user_id', userId);
+  }
+  if (token) {
+    setApiToken(token);
+  }
 };
 
 export const getApiUserId = (): string => {
-  return localStorage.getItem('paypilot_user_id') || currentUserId;
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('paypilot_user_id') || currentUserId;
+  }
+  return currentUserId;
 };
 
 // Client-side state persistence for GitHub Pages / static demo mode
@@ -43,6 +66,10 @@ const setStore = (key: string, val: any) => {
 
 const request = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
   const headers = new Headers(options.headers || {});
+  const token = getApiToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
   headers.set('X-User-Id', getApiUserId());
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -984,12 +1011,18 @@ export const api = {
   resetSeedData: () => request<any>('/api/seed/reset', { method: 'POST' }),
 
   // Commercial Auth & Organization Onboarding
-  loginUser: (email: string, password?: string) =>
-    request<any>('/api/auth/login', {
+  loginUser: async (email: string, password?: string) => {
+    const res = await request<any>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password: password || 'demo' })
-    }),
-  registerOrganization: (data: {
+    });
+    if (res?.access_token) {
+      setApiToken(res.access_token);
+      if (res.user?.id) setApiUserId(res.user.id, res.access_token);
+    }
+    return res;
+  },
+  registerOrganization: async (data: {
     company_name: string;
     owner_name: string;
     email: string;
@@ -999,11 +1032,33 @@ export const api = {
     pan?: string;
     tan?: string;
     state?: string;
-  }) =>
-    request<any>('/api/auth/register-organization', {
+  }) => {
+    const res = await request<any>('/api/auth/register-organization', {
       method: 'POST',
       body: JSON.stringify(data)
-    }),
+    });
+    if (res?.access_token) {
+      setApiToken(res.access_token);
+      if (res.user?.id) setApiUserId(res.user.id, res.access_token);
+    }
+    return res;
+  },
+  switchDemoUser: async (userId: string) => {
+    try {
+      const res = await request<any>('/api/auth/switch-demo', {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId })
+      });
+      if (res?.access_token) {
+        setApiToken(res.access_token);
+        setApiUserId(userId, res.access_token);
+      }
+      return res;
+    } catch {
+      setApiUserId(userId);
+      return { user: { id: userId } };
+    }
+  },
   forgotPassword: (email: string) =>
     request<any>('/api/auth/forgot-password', {
       method: 'POST',

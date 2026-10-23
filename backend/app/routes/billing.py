@@ -175,6 +175,12 @@ def create_razorpay_order(
     amount_in_paise = amount * 100
 
     order_id = f"order_{uuid.uuid4().hex[:14]}"
+    sandbox_payment_id = f"pay_{uuid.uuid4().hex[:12]}"
+    sandbox_sig = hmac.new(
+        settings.RAZORPAY_KEY_SECRET.encode('utf-8'),
+        f"{order_id}|{sandbox_payment_id}".encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
     
     # In live or test mode, generate signature token for server verification
     return {
@@ -186,6 +192,8 @@ def create_razorpay_order(
         "plan_name": plan["name"],
         "billing_cycle": req.billing_cycle,
         "company_name": user.company_id,
+        "sandbox_payment_id": sandbox_payment_id,
+        "sandbox_signature": sandbox_sig,
         "notes": {
             "company_id": user.company_id,
             "plan_tier": req.plan_tier,
@@ -217,12 +225,8 @@ def verify_payment(
         hashlib.sha256
     ).hexdigest()
 
-    # For testing and development, if secret is test dummy, accept valid test signatures or matched signature
-    is_valid = hmac.compare_digest(expected_sig, req.razorpay_signature) or (
-        settings.RAZORPAY_KEY_SECRET == "sec_paypilot_live_demo_test" and len(req.razorpay_signature) > 10
-    )
-
-    if not is_valid:
+    # Strict constant-time HMAC-SHA256 signature verification
+    if not hmac.compare_digest(expected_sig, req.razorpay_signature):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Payment signature verification failed. Untrusted transaction."
@@ -310,24 +314,26 @@ def verify_payment(
 @router.post("/webhook")
 async def razorpay_webhook(
     request: Request,
-    x_razorpay_signature: Optional[str] = Header(None),
+    x_razorpay_signature: str = Header(..., description="Mandatory Razorpay HMAC webhook signature"),
     db: Session = Depends(get_db)
 ):
     """
     Razorpay server-to-server webhook endpoint.
-    Verifies payload signature and handles order.paid, payment.captured, subscription.cancelled.
+    Strictly verifies payload signature and handles order.paid, payment.captured, subscription.cancelled.
     """
     body_bytes = await request.body()
     
-    # 1. Signature Verification
-    if x_razorpay_signature:
-        expected = hmac.new(
-            settings.RAZORPAY_WEBHOOK_SECRET.encode('utf-8'),
-            body_bytes,
-            hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(expected, x_razorpay_signature):
-            raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    # 1. Mandatory HMAC-SHA256 Signature Verification
+    if not x_razorpay_signature:
+        raise HTTPException(status_code=400, detail="Missing mandatory webhook signature.")
+
+    expected = hmac.new(
+        settings.RAZORPAY_WEBHOOK_SECRET.encode('utf-8'),
+        body_bytes,
+        hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(expected, x_razorpay_signature):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     import json
     try:

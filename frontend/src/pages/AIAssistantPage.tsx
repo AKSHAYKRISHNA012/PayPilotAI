@@ -194,7 +194,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                     : 'bg-slate-50 border border-slate-200 text-slate-800'
                 }`}
               >
-                {/* Render markdown lines */}
+                {/* Render safe sanitized markdown lines */}
                 <div className="prose prose-xs max-w-none space-y-1.5">
                   {m.text.split('\n').map((line, i) => {
                     if (line.startsWith('### ')) {
@@ -204,12 +204,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                       return <p key={i} className="font-semibold text-slate-900">{line.replace(/\*\*/g, '')}</p>;
                     }
                     if (line.startsWith('- ')) {
-                      return <li key={i} className="ml-4 list-disc">{line.replace('- ', '')}</li>;
+                      const itemText = line.slice(2);
+                      const parts = itemText.split(/(\*\*.*?\*\*|`.*?`)/g);
+                      return (
+                        <li key={i} className="ml-4 list-disc">
+                          {parts.map((part, pIdx) => {
+                            if (part.startsWith('**') && part.endsWith('**')) {
+                              return <strong key={pIdx} className="font-semibold text-slate-900">{part.slice(2, -2)}</strong>;
+                            }
+                            if (part.startsWith('`') && part.endsWith('`')) {
+                              return <code key={pIdx} className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px] text-slate-800">{part.slice(1, -1)}</code>;
+                            }
+                            return part;
+                          })}
+                        </li>
+                      );
                     }
                     if (line.trim() === '') {
                       return <div key={i} className="h-1" />;
                     }
-                    return <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code class="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px]">$1</code>') }} />;
+                    const lineParts = line.split(/(\*\*.*?\*\*|`.*?`)/g);
+                    return (
+                      <p key={i}>
+                        {lineParts.map((part, pIdx) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={pIdx} className="font-semibold text-slate-900">{part.slice(2, -2)}</strong>;
+                          }
+                          if (part.startsWith('`') && part.endsWith('`')) {
+                            return <code key={pIdx} className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px] text-slate-800">{part.slice(1, -1)}</code>;
+                          }
+                          return part;
+                        })}
+                      </p>
+                    );
                   })}
                 </div>
 

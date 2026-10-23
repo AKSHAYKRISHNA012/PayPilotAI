@@ -42,4 +42,20 @@ class Settings(BaseSettings):
         "https://akshaykrishna012.github.io"
     ]
 
+    def validate_production_secrets(self):
+        """Enforces that production deployments never run with default demo secrets."""
+        if self.APP_ENV == "production":
+            insecure_defaults = [
+                "paypilot-enterprise-sec-token-fy26-ind-saas",
+                "sec_paypilot_live_demo_test",
+                "whsec_paypilot_hmac_2026"
+            ]
+            if self.SECRET_KEY in insecure_defaults:
+                raise ValueError("CRITICAL SECURITY ERROR: SECRET_KEY must be provided via environment variable in production.")
+            if self.JWT_SECRET in insecure_defaults:
+                raise ValueError("CRITICAL SECURITY ERROR: JWT_SECRET must be provided via environment variable in production.")
+            if self.RAZORPAY_KEY_SECRET in insecure_defaults:
+                raise ValueError("CRITICAL SECURITY ERROR: RAZORPAY_KEY_SECRET must be configured securely in production.")
+
 settings = Settings()
+settings.validate_production_secrets()

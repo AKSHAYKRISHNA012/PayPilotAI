@@ -72,13 +72,17 @@ def get_printable_payslip(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    period = db.query(PayrollPeriod).filter(PayrollPeriod.id == period_id).first()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == comp_id
+    ).first()
     if not period:
         raise HTTPException(status_code=404, detail="Period not found")
 
     item = db.query(PayrollItem).filter(
         PayrollItem.period_id == period_id,
-        PayrollItem.employee_id == employee_id
+        PayrollItem.employee_id == employee_id,
+        PayrollItem.company_id == comp_id
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Payroll line not found for this employee")
@@ -154,11 +158,17 @@ def get_monthly_summary_report(
     db: Session = Depends(get_db)
 ):
     comp_id = user.company_id
-    period = db.query(PayrollPeriod).filter(PayrollPeriod.id == period_id).first()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == comp_id
+    ).first()
     if not period:
         raise HTTPException(status_code=404, detail="Period not found")
 
-    items = db.query(PayrollItem).filter(PayrollItem.period_id == period_id).all()
+    items = db.query(PayrollItem).filter(
+        PayrollItem.period_id == period_id,
+        PayrollItem.company_id == comp_id
+    ).all()
 
     total_gross = sum(i.gross_earnings for i in items)
     total_net = sum(i.net_salary for i in items)
@@ -191,7 +201,17 @@ def get_department_report(
     db: Session = Depends(get_db)
 ):
     comp_id = user.company_id
-    items = db.query(PayrollItem).filter(PayrollItem.period_id == period_id).all()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == comp_id
+    ).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+
+    items = db.query(PayrollItem).filter(
+        PayrollItem.period_id == period_id,
+        PayrollItem.company_id == comp_id
+    ).all()
 
     depts = {}
     for item in items:
@@ -221,11 +241,17 @@ def export_payroll_csv(
     if user.role not in ["admin", "payroll_admin"]:
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    period = db.query(PayrollPeriod).filter(PayrollPeriod.id == period_id).first()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == user.company_id
+    ).first()
     if not period:
         raise HTTPException(status_code=404, detail="Period not found")
 
-    items = db.query(PayrollItem).filter(PayrollItem.period_id == period_id).all()
+    items = db.query(PayrollItem).filter(
+        PayrollItem.period_id == period_id,
+        PayrollItem.company_id == user.company_id
+    ).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -281,11 +307,17 @@ def export_bank_payment_file(
     if user.role not in ["admin", "payroll_admin"]:
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    period = db.query(PayrollPeriod).filter(PayrollPeriod.id == period_id).first()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == user.company_id
+    ).first()
     if not period:
         raise HTTPException(status_code=404, detail="Period not found")
 
-    items = db.query(PayrollItem).filter(PayrollItem.period_id == period_id).all()
+    items = db.query(PayrollItem).filter(
+        PayrollItem.period_id == period_id,
+        PayrollItem.company_id == user.company_id
+    ).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -335,11 +367,17 @@ def export_epfo_ecr_file(
     if user.role not in ["admin", "payroll_admin"]:
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    period = db.query(PayrollPeriod).filter(PayrollPeriod.id == period_id).first()
+    period = db.query(PayrollPeriod).filter(
+        PayrollPeriod.id == period_id,
+        PayrollPeriod.company_id == user.company_id
+    ).first()
     if not period:
         raise HTTPException(status_code=404, detail="Period not found")
 
-    items = db.query(PayrollItem).filter(PayrollItem.period_id == period_id).all()
+    items = db.query(PayrollItem).filter(
+        PayrollItem.period_id == period_id,
+        PayrollItem.company_id == user.company_id
+    ).all()
 
     lines = []
     for item in items:

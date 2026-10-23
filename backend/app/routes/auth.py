@@ -299,8 +299,35 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
     return {
         "status": "success",
-        "message": "Password reset link generated successfully.",
-        "reset_token": reset_token  # Returned directly for ease of testing & dev
+        "message": "Password reset instructions have been dispatched to your registered email address."
+    }
+
+@router.post("/switch-demo")
+def switch_demo_user(req: SwitchDemoRequest, db: Session = Depends(get_db)):
+    """Issues a cryptographically signed JWT for the selected demo profile."""
+    user = db.query(User).filter(User.id == req.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo user not found."
+        )
+    token = create_access_token({
+        "sub": user.id,
+        "email": user.email,
+        "role": user.role,
+        "company_id": user.company_id
+    })
+    return {
+        "status": "success",
+        "access_token": token,
+        "token_type": "Bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "company_id": user.company_id
+        }
     }
 
 @router.post("/reset-password")
