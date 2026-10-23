@@ -154,7 +154,7 @@ export interface LeaveRequest {
   employee_name: string;
   emp_code: string;
   department: string;
-  leave_type: 'casual' | 'sick' | 'earned' | 'unpaid_lop';
+  leave_type: 'casual' | 'sick' | 'earned' | 'duty_leave' | 'unpaid_lop' | 'comp_off';
   start_date: string;
   end_date: string;
   days_count: number;

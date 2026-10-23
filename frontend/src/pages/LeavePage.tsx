@@ -96,13 +96,13 @@ export const LeavePage: React.FC<LeavePageProps> = ({ currentUser }) => {
       </div>
 
       {/* Quota Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div className="bg-white p-3.5 rounded-lg border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500">Available Total</span>
           <p className="text-xl font-bold text-slate-900 mt-1">
             {myBalance ? myBalance.total_remaining : 22} <span className="text-xs font-normal text-slate-400">Days</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">CY 2026 Quota</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Paid Quota Balance</p>
         </div>
 
         <div className="bg-white p-3.5 rounded-lg border border-slate-200">
@@ -126,13 +126,19 @@ export const LeavePage: React.FC<LeavePageProps> = ({ currentUser }) => {
         </div>
 
         <div className="bg-white p-3.5 rounded-lg border border-slate-200">
-          <span className="text-[11px] font-medium text-slate-500">Earned Leave (EL)</span>
-          <p className="text-xl font-bold text-slate-900 mt-1">
-            {myBalance ? myBalance.earned_remaining : 12} <span className="text-xs font-normal text-slate-400">Days</span>
+          <span className="text-[11px] font-medium text-slate-500">Duty Leave (OD)</span>
+          <p className="text-xl font-bold text-indigo-700 mt-1">
+            On-Duty <span className="text-xs font-normal text-slate-400">Paid</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            Used: {myBalance ? myBalance.earned_used : 3} of {myBalance ? myBalance.earned_total : 15}
+          <p className="text-[10px] text-slate-400 mt-0.5">Client & Field Visit</p>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200">
+          <span className="text-[11px] font-medium text-slate-500">Loss of Pay (LOP)</span>
+          <p className="text-xl font-bold text-red-600 mt-1">
+            {requests.filter(r => r.leave_type === 'unpaid_lop' && r.status === 'approved').reduce((s, r) => s + r.days_count, 0)} <span className="text-xs font-normal text-slate-400">Days</span>
           </p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Deducted from Salary</p>
         </div>
       </div>
 
@@ -167,8 +173,22 @@ export const LeavePage: React.FC<LeavePageProps> = ({ currentUser }) => {
                     <p className="font-semibold text-slate-900">{r.employee_name}</p>
                     <p className="text-[11px] text-slate-400">{r.emp_code} &bull; {r.department}</p>
                   </td>
-                  <td className="py-2.5 px-3.5 capitalize font-medium text-slate-700">
-                    {r.leave_type} Leave
+                  <td className="py-2.5 px-3.5 font-medium text-slate-800">
+                    {r.leave_type === 'duty_leave' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        ON DUTY (OD)
+                      </span>
+                    ) : r.leave_type === 'unpaid_lop' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">
+                        LOSS OF PAY (LOP)
+                      </span>
+                    ) : r.leave_type === 'comp_off' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        COMP-OFF
+                      </span>
+                    ) : (
+                      <span className="capitalize">{r.leave_type} Leave</span>
+                    )}
                   </td>
                   <td className="py-2.5 px-3.5 font-mono text-slate-600">
                     {r.start_date} to {r.end_date}
@@ -229,13 +249,34 @@ export const LeavePage: React.FC<LeavePageProps> = ({ currentUser }) => {
                 <select
                   value={newLeave.leave_type}
                   onChange={(e) => setNewLeave({ ...newLeave, leave_type: e.target.value })}
-                  className="w-full mt-1 p-2 rounded border border-slate-200 bg-white"
+                  className="w-full mt-1 p-2 rounded border border-slate-200 bg-white font-medium"
                 >
-                  <option value="casual">Casual Leave (CL)</option>
-                  <option value="sick">Sick Leave (SL)</option>
-                  <option value="earned">Earned Leave (EL)</option>
-                  <option value="unpaid_lop">Unpaid Leave (Loss of Pay)</option>
+                  <option value="casual">Casual Leave (CL) - Paid</option>
+                  <option value="sick">Sick Leave (SL) - Paid</option>
+                  <option value="earned">Earned Leave (EL) - Paid</option>
+                  <option value="duty_leave">Duty Leave (On Duty / OD) - Official Visit (Paid)</option>
+                  <option value="unpaid_lop">Loss of Pay (LOP) - Unpaid Absence</option>
+                  <option value="comp_off">Compensatory Off (Comp-Off) - Paid</option>
                 </select>
+              </div>
+
+              {/* Statutory Pay Impact Callout */}
+              <div className={`p-2.5 rounded-lg border text-[11px] ${
+                newLeave.leave_type === 'duty_leave'
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                  : newLeave.leave_type === 'unpaid_lop'
+                  ? 'bg-red-50 border-red-200 text-red-900'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              }`}>
+                {newLeave.leave_type === 'duty_leave' && (
+                  <p><strong>Duty Leave (OD):</strong> Counted as 100% Present on duty for official client/field assignments. Zero loss of pay.</p>
+                )}
+                {newLeave.leave_type === 'unpaid_lop' && (
+                  <p><strong>Loss of Pay (LOP):</strong> Unpaid leave. Will deduct daily gross wage from upcoming monthly payroll run.</p>
+                )}
+                {['casual', 'sick', 'earned', 'comp_off'].includes(newLeave.leave_type) && (
+                  <p><strong>Approved Paid Leave:</strong> Deducted from your annual quota balance. 100% full salary paid.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

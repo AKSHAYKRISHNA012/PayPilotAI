@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import (
     PayrollPeriod, PayrollItem, Employee, SalaryStructure,
-    AttendanceRecord, AuditFinding, AuditLog, User
+    AttendanceRecord, LeaveRequest, AuditFinding, AuditLog, User
 )
 from app.routes.auth import get_current_user
 from app.security import require_roles
@@ -260,15 +260,25 @@ def calculate_period_payroll(
         bonus = existing_item.bonus_or_variable if existing_item else 0.0
         other_ded = existing_item.other_deductions if existing_item else 0.0
 
-        # Calculate absent days from attendance
+        # Calculate absent days from biometric machine attendance records
         absent_days = db.query(AttendanceRecord).filter(
             AttendanceRecord.employee_id == emp.id,
             AttendanceRecord.company_id == comp_id,
             AttendanceRecord.status == "absent"
         ).count()
 
-        # If already set on item, preserve; otherwise calculate
-        unpaid_days = existing_item.unpaid_leave_days if existing_item else float(absent_days)
+        # Calculate approved Loss of Pay (unpaid_lop) leaves
+        lop_leaves = db.query(LeaveRequest).filter(
+            LeaveRequest.employee_id == emp.id,
+            LeaveRequest.company_id == comp_id,
+            LeaveRequest.leave_type == "unpaid_lop",
+            LeaveRequest.status == "approved"
+        ).all()
+        lop_leave_days = sum(l.days_count for l in lop_leaves)
+
+        # Duty Leaves (On Duty / OD) are explicitly fully paid (0 LOP)
+        total_unpaid = float(absent_days) + float(lop_leave_days)
+        unpaid_days = existing_item.unpaid_leave_days if (existing_item and existing_item.unpaid_leave_days > 0) else total_unpaid
 
         calc = calculate_payroll_item(
             basic=sal.basic,
