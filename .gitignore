@@ -1,0 +1,7 @@
+node_modules/
+backend/
+frontend/
+*.db
+*.db-shm
+*.db-wal
+.pytest_cache/
