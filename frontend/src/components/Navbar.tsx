@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import {
   Shield, UserCheck, Users, RotateCcw,
-  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon, Lock
+  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon, Lock, Calendar
 } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -118,6 +118,25 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="hidden md:flex items-center gap-1.5 pl-6 border-l border-slate-200 text-xs text-slate-600 font-medium">
           <Building2 className="w-3.5 h-3.5 text-slate-400" />
           <span>{currentUser?.company?.name || 'BharatTech Innovations Pvt. Ltd.'}</span>
+        </div>
+
+        {/* Live Real-Time Date & Statutory Enclave Badge */}
+        <div className="hidden xl:flex items-center gap-2 pl-4 border-l border-slate-200">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-800 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+            <span>
+              {new Intl.DateTimeFormat('en-IN', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              }).format(new Date())}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono font-semibold border border-slate-200 px-2 py-0.5 rounded bg-white">
+            FY 2026-27 Active
+          </span>
         </div>
       </div>
 

@@ -322,7 +322,7 @@ export const PayslipsReportsPage: React.FC<PayslipsReportsPageProps> = ({ curren
             <div>
               <p className="font-semibold text-slate-800">Digitally Verified Document</p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Generated via PayPilot AI Payroll Engine. No physical signature required.
+                Generated on: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} IST via PayPilot AI. No physical signature required.
               </p>
               <p className="text-[10px] text-slate-400">
                 Leave Balance: CL ({payslip.leaves.casual_remaining}d), SL ({payslip.leaves.sick_remaining}d), EL ({payslip.leaves.earned_remaining}d)

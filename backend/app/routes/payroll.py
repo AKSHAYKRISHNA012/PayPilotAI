@@ -10,6 +10,7 @@ from app.models import (
     AttendanceRecord, AuditFinding, AuditLog, User
 )
 from app.routes.auth import get_current_user
+from app.security import require_roles
 from app.payroll_engine import calculate_payroll_item
 
 router = APIRouter(prefix="/api/payroll", tags=["payroll"])
@@ -60,6 +61,69 @@ def list_periods(
             "total_employer_cost": total_cost
         })
     return {"periods": results}
+
+@router.post("/periods")
+def create_payroll_period(
+    req: CreatePeriodRequest,
+    user: User = Depends(require_roles(["owner", "admin", "payroll_admin"])),
+    db: Session = Depends(get_db)
+):
+    comp_id = user.company_id
+    existing = db.query(PayrollPeriod).filter(
+        PayrollPeriod.company_id == comp_id,
+        PayrollPeriod.month == req.month,
+        PayrollPeriod.year == req.year
+    ).first()
+    if existing:
+        return {"status": "success", "period": {"id": existing.id, "name": existing.name, "status": existing.status}}
+
+    period_id = f"period_{req.year}_{req.month:02d}_{uuid.uuid4().hex[:6]}"
+    month_name = date(req.year, req.month, 1).strftime("%B %Y")
+    period = PayrollPeriod(
+        id=period_id,
+        company_id=comp_id,
+        month=req.month,
+        year=req.year,
+        name=req.name or month_name,
+        working_days=req.working_days,
+        status="draft",
+        prepared_by=user.id,
+        prepared_at=datetime.utcnow()
+    )
+    db.add(period)
+    db.commit()
+
+    # Pre-populate items for active employees
+    employees = db.query(Employee).filter(Employee.company_id == comp_id, Employee.status == "active").all()
+    for emp in employees:
+        sal = db.query(SalaryStructure).filter(SalaryStructure.employee_id == emp.id).first()
+        basic = sal.basic if sal else 50000.0
+        hra = sal.hra if sal else 25000.0
+        special = sal.special_allowance if sal else 15000.0
+        gross = basic + hra + special
+        pf = min(1800.0, basic * 0.12)
+        pt = 200.0
+        net = gross - pf - pt
+        item = PayrollItem(
+            id=f"item_{period_id}_{emp.id}",
+            company_id=comp_id,
+            period_id=period_id,
+            employee_id=emp.id,
+            basic=basic,
+            hra=hra,
+            special_allowance=special,
+            gross_earnings=gross,
+            employee_pf=pf,
+            employer_pf=pf,
+            professional_tax=pt,
+            net_salary=net,
+            total_deductions=pf + pt,
+            total_employer_cost=gross + pf,
+            audit_status="clean"
+        )
+        db.add(item)
+    db.commit()
+    return {"status": "success", "period": {"id": period.id, "name": period.name, "status": period.status}}
 
 @router.get("/periods/{id}")
 def get_period_detail(

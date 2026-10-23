@@ -12,6 +12,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(10); // Current active payroll month
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [filterStatus, setFilterStatus] = useState('all');
   const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
   const [markData, setMarkData] = useState({
@@ -20,19 +23,19 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
     status: 'present',
     check_in: '09:15 AM',
     check_out: '06:30 PM',
-    notes: 'Regular check-in'
+    notes: 'Real-time biometric check-in'
   });
 
   const isEmployee = currentUser?.role === 'employee';
 
   useEffect(() => {
     loadAttendance();
-  }, [currentUser]);
+  }, [currentUser, selectedMonth, selectedYear]);
 
   const loadAttendance = async () => {
     try {
       setLoading(true);
-      const res = await api.getAttendance(10, 2026);
+      const res = await api.getAttendance(selectedMonth, selectedYear);
       setRecords(res.records);
       setSummary(res.summary);
     } catch (err) {
@@ -72,15 +75,36 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
           </p>
         </div>
 
-        {!isEmployee && (
-          <button
-            onClick={() => setIsMarkModalOpen(true)}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Mark Attendance</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Real Month/Year Selector */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2.5 py-1 text-xs">
+            <span className="text-slate-400 font-medium">Cycle:</span>
+            <select
+              value={`${selectedYear}-${selectedMonth}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split('-').map(Number);
+                setSelectedYear(y);
+                setSelectedMonth(m);
+              }}
+              className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
+            >
+              <option value="2026-10">October 2026 (Active)</option>
+              <option value="2026-9">September 2026</option>
+              <option value="2026-8">August 2026</option>
+              <option value="2026-11">November 2026 (Upcoming)</option>
+            </select>
+          </div>
+
+          {!isEmployee && (
+            <button
+              onClick={() => setIsMarkModalOpen(true)}
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Mark Attendance</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Clock-In Banner (Clean, understated bar) */}
@@ -92,23 +116,23 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
               Web & Biometric Terminal &bull; <span className="font-normal text-slate-500">Koramangala Office (Verified)</span>
             </p>
             <p className="text-[11px] text-slate-400">
-              Session: {currentUser?.full_name} &bull; Expected Shift: 09:30 AM to 06:30 PM IST
+              Session: {currentUser?.full_name} &bull; Expected Shift: 09:30 AM to 06:30 PM IST &bull; Real Time: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
         </div>
 
         <button
           onClick={async () => {
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             await api.markAttendance({
               employee_id: currentUser?.employee_id || 'emp_003',
               date: new Date().toISOString().split('T')[0],
               status: 'present',
-              check_in: now,
+              check_in: timeStr,
               check_out: '06:30 PM',
               notes: 'Self-punched'
             });
-            alert(`Recorded check-in timestamp: ${now}`);
+            toast.success(`Check-in timestamp recorded at ${timeStr}`, 'Attendance Punched');
             loadAttendance();
           }}
           className="cursor-pointer px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"

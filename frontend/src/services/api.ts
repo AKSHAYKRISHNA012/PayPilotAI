@@ -105,6 +105,17 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
   if (url.includes('/api/auth/me')) {
     return me as any;
   }
+  if (url.includes('/api/auth/switch-demo')) {
+    const body = JSON.parse(options.body as string || '{}');
+    const targetId = body.user_id || 'usr_admin';
+    const targetUser = users.find(u => u.id === targetId) || users[0];
+    return {
+      status: 'success',
+      access_token: `token_demo_${targetId}`,
+      token_type: 'Bearer',
+      user: targetUser
+    } as any;
+  }
 
   // Dashboard stats
   if (url.includes('/api/dashboard/stats')) {
@@ -393,6 +404,27 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
       const updatedPeriods = periods.map(p => p.id === 'period_oct_2026' ? { ...p, status: 'processed' as const } : p);
       setStore('payroll_periods', updatedPeriods);
       return { message: 'Processed successfully' } as any;
+    }
+    if (method === 'POST' && (url.endsWith('/periods') || url.endsWith('/periods/'))) {
+      const body = JSON.parse(options.body as string || '{}');
+      const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const pName = body.name || `${monthNames[body.month] || 'Month'} ${body.year}`;
+      const newP: PayrollPeriod = {
+        id: `period_${body.year}_${body.month}`,
+        name: pName,
+        month: body.month,
+        year: body.year,
+        working_days: body.working_days || 22,
+        status: 'draft',
+        employee_count: items.length,
+        flagged_count: 0,
+        total_gross: items.reduce((s, i) => s + i.gross_earnings, 0),
+        total_net: items.reduce((s, i) => s + i.net_salary, 0),
+        total_employer_cost: items.reduce((s, i) => s + i.total_employer_cost, 0)
+      };
+      const updatedP = [newP, ...periods.filter(p => p.id !== newP.id)];
+      setStore('payroll_periods', updatedP);
+      return { status: 'success', period: newP } as any;
     }
     if (method === 'PUT' && url.includes('/items/')) {
       const itemId = url.split('/items/')[1];
@@ -929,6 +961,8 @@ export const api = {
 
   // Payroll
   getPayrollPeriods: () => request<{ periods: PayrollPeriod[] }>('/api/payroll/periods'),
+  createPayrollPeriod: (data: { month: number; year: number; name?: string; working_days?: number }) =>
+    request<any>('/api/payroll/periods', { method: 'POST', body: JSON.stringify(data) }),
   getPeriodDetail: (id: string, department?: string, auditStatus?: string) => {
     const params = new URLSearchParams();
     if (department && department !== 'all') params.append('department', department);

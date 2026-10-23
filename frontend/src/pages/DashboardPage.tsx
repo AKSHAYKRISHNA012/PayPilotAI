@@ -340,6 +340,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return true;
   });
 
+  const todayDate = new Date();
+  const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+  const daysRemainingInMonth = Math.max(0, daysInMonth - todayDate.getDate());
+  const formattedToday = new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(todayDate);
+
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       {/* Top Feedback Banner */}
@@ -369,6 +379,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
         </div>
       )}
+
+      {/* Live Market-Ready Operational Ribbon */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold">
+            <CalendarCheck className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div>
+            <p className="font-bold text-slate-900">
+              Live System Date: <span className="text-indigo-700">{formattedToday}</span>
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Standard 22-day working schedule &bull; Current cut-off window active
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-800 font-medium text-xs flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Payday in <strong>{daysRemainingInMonth} days</strong></span>
+          </div>
+          <div className="px-3 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span>CBDT FY 2026-27 Compliant</span>
+          </div>
+        </div>
+      </div>
 
       {/* Page Title & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200/60">

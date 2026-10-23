@@ -20,8 +20,8 @@ class MarkAttendanceRequest(BaseModel):
 
 @router.get("")
 def get_attendance(
-    month: Optional[int] = 10,
-    year: Optional[int] = 2026,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
     employee_id: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -36,6 +36,11 @@ def get_attendance(
         query = query.filter(AttendanceRecord.employee_id == employee_id)
 
     records = query.order_by(AttendanceRecord.date.desc()).all()
+
+    if month is not None and year is not None:
+        filtered = [r for r in records if r.date.month == month and r.date.year == year]
+        if filtered:
+            records = filtered
 
     results = []
     for r in records:
