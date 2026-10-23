@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  paypilot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paypilot-saas-core
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:-paypilot-prod-enterprise-key-2026}
+      - JWT_SECRET=${JWT_SECRET:-paypilot-jwt-enterprise-key-2026}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-rzp_test_paypilot_saas_2026}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-sec_paypilot_live_demo_test}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET:-whsec_paypilot_hmac_2026}
+      - DATABASE_URL=sqlite:///./backend/paypilot.db
+    volumes:
+      - paypilot-data:/app/backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  paypilot-data:
+    driver: local

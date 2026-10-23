@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'payroll_admin' | 'employee';
+export type UserRole = 'admin' | 'owner' | 'payroll_admin' | 'manager' | 'employee';
 
 export interface User {
   id: string;
@@ -11,6 +11,17 @@ export interface User {
   company?: {
     id: string;
     name: string;
+    pan?: string;
+    tan?: string;
+    plan_tier?: string;
+    subscription_status?: string;
+    max_employees?: number;
+    trial_ends_at?: string;
+  };
+  subscription?: {
+    plan_tier: string;
+    status: string;
+    billing_cycle: string;
   };
 }
 
@@ -24,6 +35,9 @@ export interface Employee {
   phone: string;
   department: string;
   designation: string;
+  manager_id?: string;
+  employment_type?: 'full_time' | 'contract' | 'intern';
+  employment_status?: 'active' | 'probation' | 'notice_period' | 'resigned' | 'terminated';
   joining_date: string;
   status: 'active' | 'inactive';
   pan: string;
@@ -34,6 +48,54 @@ export interface Employee {
   state: string;
   monthly_gross?: number;
   ctc_annual?: number;
+}
+
+export interface EmployeeDocument {
+  id: string;
+  document_type: string;
+  title: string;
+  file_name: string;
+  file_size_kb: number;
+  file_url: string;
+  uploaded_by?: string;
+  uploaded_at: string;
+}
+
+export interface SaaSPlan {
+  id: string;
+  name: string;
+  tagline: string;
+  monthly_price: number;
+  annual_price: number;
+  max_employees: number;
+  features: string[];
+  is_popular: boolean;
+}
+
+export interface SaaSSubscription {
+  company_id: string;
+  company_name: string;
+  plan_tier: string;
+  plan_name: string;
+  subscription_status: string;
+  max_employees: number;
+  current_employee_count: number;
+  trial_ends_at?: string;
+  trial_days_remaining?: number;
+  billing_cycle: string;
+  current_period_end?: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string;
+  payment_method: string;
+  paid_at?: string;
+  created_at: string;
 }
 
 export interface SalaryStructure {

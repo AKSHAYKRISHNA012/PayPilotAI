@@ -547,7 +547,91 @@ export const api = {
   },
 
   // Reset Seed
-  resetSeedData: () => request<any>('/api/seed/reset', { method: 'POST' })
+  resetSeedData: () => request<any>('/api/seed/reset', { method: 'POST' }),
+
+  // Commercial Auth & Organization Onboarding
+  loginUser: (email: string, password?: string) =>
+    request<any>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: password || 'demo' })
+    }),
+  registerOrganization: (data: {
+    company_name: string;
+    owner_name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    plan_tier?: string;
+    pan?: string;
+    tan?: string;
+    state?: string;
+  }) =>
+    request<any>('/api/auth/register-organization', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  forgotPassword: (email: string) =>
+    request<any>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }),
+  resetPassword: (token: string, new_password: string) =>
+    request<any>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password })
+    }),
+
+  // Commercial Billing & Subscriptions
+  getPlans: () => request<{ plans: any[] }>('/api/billing/plans'),
+  getSubscription: () => request<any>('/api/billing/subscription'),
+  createRazorpayOrder: (plan_tier: string, billing_cycle: string = 'monthly') =>
+    request<any>('/api/billing/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ plan_tier, billing_cycle })
+    }),
+  verifyPayment: (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    plan_tier: string;
+    billing_cycle?: string;
+  }) =>
+    request<any>('/api/billing/verify-payment', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  getInvoices: () => request<{ invoices: any[] }>('/api/billing/invoices'),
+  contactSales: (data: {
+    full_name: string;
+    email: string;
+    phone?: string;
+    company_name: string;
+    employee_range?: string;
+    message?: string;
+    inquiry_type?: string;
+  }) =>
+    request<any>('/api/billing/contact-sales', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  // Employee Documents
+  getEmployeeDocuments: (employeeId: string) =>
+    request<{ documents: any[] }>(`/api/employees/${employeeId}/documents`),
+  uploadEmployeeDocument: (employeeId: string, doc: {
+    document_type: string;
+    title: string;
+    file_name: string;
+    file_size_kb?: number;
+  }) =>
+    request<any>(`/api/employees/${employeeId}/documents`, {
+      method: 'POST',
+      body: JSON.stringify(doc)
+    }),
+  deleteEmployeeDocument: (employeeId: string, docId: string) =>
+    request<any>(`/api/employees/${employeeId}/documents/${docId}`, {
+      method: 'DELETE'
+    })
 };
 
 export const formatINR = (amount: number = 0): string => {

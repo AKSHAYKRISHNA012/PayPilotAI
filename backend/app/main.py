@@ -1,31 +1,49 @@
-from fastapi import FastAPI
+import time
+from datetime import datetime
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from app.config import settings
-from app.database import init_db, SessionLocal
+from app.database import init_db, SessionLocal, engine
 from app.seed_data import seed_database
 from app.routes import (
     auth, dashboard, employees, attendance,
     leave, salary_structure, payroll, auditor,
-    assistant, reports, seed
+    assistant, reports, seed, billing
 )
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="AI-Powered HR & Payroll SaaS for Indian Startups & SMEs",
-    version="1.0.0"
+    description="Commercial-Ready AI-Powered HR & Payroll SaaS for Indian Startups & SMEs",
+    version=settings.APP_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# CORS configuration
+# 1. DevSecOps Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
+# 2. CORS configuration (supports localhost, custom domain, and GitHub Pages demo preview)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS + ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include Routers
+# 3. Include Routers
 app.include_router(auth.router)
+app.include_router(billing.router)
 app.include_router(dashboard.router)
 app.include_router(employees.router)
 app.include_router(attendance.router)
@@ -51,10 +69,37 @@ def root():
     return {
         "app": settings.APP_NAME,
         "tagline": "Smarter Payroll. Confident Decisions.",
+        "version": settings.APP_VERSION,
+        "environment": settings.APP_ENV,
         "status": "online",
         "docs": "/docs"
     }
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    """Liveness probe reporting backend availability."""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": settings.APP_VERSION
+    }
+
+@app.get("/ready")
+def readiness_check():
+    """Readiness probe checking database connectivity and system status."""
+    db_ok = False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "database": "disconnected", "error": str(e)}
+        )
+
+    return {
+        "status": "ready",
+        "database": "connected",
+        "timestamp": datetime.utcnow().isoformat()
+    }

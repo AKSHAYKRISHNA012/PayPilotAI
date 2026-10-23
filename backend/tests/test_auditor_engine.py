@@ -8,10 +8,16 @@ from app.models import (
 from app.auditor_engine import run_payroll_audit
 from datetime import date
 
+from sqlalchemy.pool import StaticPool
+
 # In-memory test SQLite DB
 @pytest.fixture
 def test_db():
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -63,6 +69,7 @@ def test_auditor_detects_negative_net_pay(test_db):
         status="calculated"
     )
     test_db.add(period)
+    test_db.commit()
 
     # Item with negative net pay
     item = PayrollItem(
@@ -97,19 +104,6 @@ def test_auditor_detects_salary_spike(test_db):
         working_days=22,
         status="processed"
     )
-    test_db.add(p_prev)
-
-    prev_item = PayrollItem(
-        id="item_prev",
-        company_id="comp_test",
-        period_id="period_sep",
-        employee_id="emp_test_1",
-        gross_earnings=50000.0,
-        total_deductions=5000.0,
-        net_salary=45000.0
-    )
-    test_db.add(prev_item)
-
     # Current period with 60% jump (> 30% threshold)
     p_curr = PayrollPeriod(
         id="period_oct",
@@ -120,8 +114,18 @@ def test_auditor_detects_salary_spike(test_db):
         working_days=22,
         status="calculated"
     )
-    test_db.add(p_curr)
+    test_db.add_all([p_prev, p_curr])
+    test_db.commit()
 
+    prev_item = PayrollItem(
+        id="item_prev",
+        company_id="comp_test",
+        period_id="period_sep",
+        employee_id="emp_test_1",
+        gross_earnings=50000.0,
+        total_deductions=5000.0,
+        net_salary=45000.0
+    )
     curr_item = PayrollItem(
         id="item_curr",
         company_id="comp_test",
@@ -131,7 +135,7 @@ def test_auditor_detects_salary_spike(test_db):
         total_deductions=8000.0,
         net_salary=72000.0
     )
-    test_db.add(curr_item)
+    test_db.add_all([prev_item, curr_item])
     test_db.commit()
 
     findings = run_payroll_audit(test_db, "comp_test", "period_oct")

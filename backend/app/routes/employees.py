@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models import (
     Employee, SalaryStructure, AttendanceRecord,
     LeaveBalance, LeaveRequest, PayrollItem, PayrollPeriod,
-    AuditLog, User
+    AuditLog, User, Company, EmployeeDocument
 )
 from app.routes.auth import get_current_user
 
@@ -22,6 +22,9 @@ class EmployeeCreate(BaseModel):
     phone: Optional[str] = "+91 9876543210"
     department: str
     designation: str
+    manager_id: Optional[str] = None
+    employment_type: Optional[str] = "full_time" # full_time, contract, intern
+    employment_status: Optional[str] = "active" # active, probation, notice_period, resigned, terminated
     joining_date: Optional[date] = None
     pan: Optional[str] = "ABCDE1234F"
     bank_name: Optional[str] = "HDFC Bank"
@@ -41,6 +44,9 @@ class EmployeeUpdate(BaseModel):
     phone: Optional[str] = None
     department: Optional[str] = None
     designation: Optional[str] = None
+    manager_id: Optional[str] = None
+    employment_type: Optional[str] = None
+    employment_status: Optional[str] = None
     status: Optional[str] = None
     pan: Optional[str] = None
     bank_name: Optional[str] = None
@@ -48,6 +54,13 @@ class EmployeeUpdate(BaseModel):
     ifsc: Optional[str] = None
     tax_regime: Optional[str] = None
     state: Optional[str] = None
+
+class DocumentCreate(BaseModel):
+    document_type: str # pan_card, aadhaar_card, offer_letter, form_16, resume
+    title: str
+    file_name: str
+    file_url: Optional[str] = None
+    file_size_kb: Optional[int] = 150
 
 @router.get("")
 def list_employees(
@@ -219,6 +232,20 @@ def create_employee(
         raise HTTPException(status_code=403, detail="Permission denied")
 
     comp_id = user.company_id
+    comp = db.query(Company).filter(Company.id == comp_id).first()
+    
+    # Enforce Plan Employee Limit
+    if comp:
+        active_count = db.query(Employee).filter(
+            Employee.company_id == comp_id,
+            Employee.status == "active"
+        ).count()
+        if active_count >= comp.max_employees:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Employee limit reached ({active_count}/{comp.max_employees}) for {comp.plan_tier.upper()} plan. Please upgrade your subscription to add more employees."
+            )
+
     new_id = f"emp_{uuid.uuid4().hex[:6]}"
 
     emp = Employee(
@@ -231,6 +258,9 @@ def create_employee(
         phone=emp_in.phone,
         department=emp_in.department,
         designation=emp_in.designation,
+        manager_id=emp_in.manager_id,
+        employment_type=emp_in.employment_type or "full_time",
+        employment_status=emp_in.employment_status or "active",
         joining_date=emp_in.joining_date or date.today(),
         status="active",
         pan=emp_in.pan,
@@ -333,5 +363,126 @@ def deactivate_employee(
         raise HTTPException(status_code=404, detail="Employee not found")
 
     emp.status = "inactive"
+    emp.employment_status = "terminated"
     db.commit()
     return {"status": "success", "message": "Employee deactivated successfully"}
+
+# -------------------------------------------------------------
+# EMPLOYEE DOCUMENT MANAGEMENT WORKFLOW
+# -------------------------------------------------------------
+
+@router.get("/{id}/documents")
+def list_employee_documents(
+    id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve all KYC and HR documents for an employee."""
+    # Privacy check
+    if user.role == "employee" and user.employee_id != id:
+        raise HTTPException(status_code=403, detail="Employees can only access their own documents.")
+
+    emp = db.query(Employee).filter(Employee.id == id, Employee.company_id == user.company_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    docs = db.query(EmployeeDocument).filter(
+        EmployeeDocument.employee_id == id,
+        EmployeeDocument.company_id == user.company_id
+    ).order_by(EmployeeDocument.uploaded_at.desc()).all()
+
+    # Pre-seed standard mock KYC documents if none exist yet for demonstration
+    if not docs:
+        default_docs = [
+            ("pan_card", "PAN Card Verification Copy", f"PAN_{emp.pan}.pdf", 180),
+            ("offer_letter", "Signed Employment Offer Letter", f"Offer_{emp.emp_code}.pdf", 320),
+            ("form_16", "Form 16 Part B (FY 25-26)", f"Form16_{emp.emp_code}.pdf", 250)
+        ]
+        for dtype, title, fname, size in default_docs:
+            d = EmployeeDocument(
+                id=f"doc_{uuid.uuid4().hex[:8]}",
+                company_id=user.company_id,
+                employee_id=id,
+                document_type=dtype,
+                title=title,
+                file_name=fname,
+                file_size_kb=size,
+                file_url=f"/documents/secure/{fname}",
+                uploaded_by="HR Administrator"
+            )
+            db.add(d)
+        db.commit()
+        docs = db.query(EmployeeDocument).filter(
+            EmployeeDocument.employee_id == id,
+            EmployeeDocument.company_id == user.company_id
+        ).all()
+
+    return {
+        "documents": [
+            {
+                "id": d.id,
+                "document_type": d.document_type,
+                "title": d.title,
+                "file_name": d.file_name,
+                "file_size_kb": d.file_size_kb,
+                "file_url": d.file_url,
+                "uploaded_by": d.uploaded_by,
+                "uploaded_at": d.uploaded_at.isoformat()
+            }
+            for d in docs
+        ]
+    }
+
+@router.post("/{id}/documents")
+def add_employee_document(
+    id: str,
+    doc_in: DocumentCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload or record an employee document (PAN, Aadhaar, Offer letter, etc.)."""
+    if user.role not in ["admin", "payroll_admin", "owner"] and user.employee_id != id:
+        raise HTTPException(status_code=403, detail="Permission denied to upload documents.")
+
+    emp = db.query(Employee).filter(Employee.id == id, Employee.company_id == user.company_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    new_doc = EmployeeDocument(
+        id=f"doc_{uuid.uuid4().hex[:8]}",
+        company_id=user.company_id,
+        employee_id=id,
+        document_type=doc_in.document_type,
+        title=doc_in.title,
+        file_name=doc_in.file_name,
+        file_size_kb=doc_in.file_size_kb or 150,
+        file_url=doc_in.file_url or f"/documents/secure/{doc_in.file_name}",
+        uploaded_by=user.full_name
+    )
+    db.add(new_doc)
+    db.commit()
+
+    return {"status": "success", "message": "Document uploaded successfully", "document_id": new_doc.id}
+
+@router.delete("/{id}/documents/{doc_id}")
+def delete_employee_document(
+    id: str,
+    doc_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an employee document."""
+    if user.role not in ["admin", "payroll_admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    doc = db.query(EmployeeDocument).filter(
+        EmployeeDocument.id == doc_id,
+        EmployeeDocument.employee_id == id,
+        EmployeeDocument.company_id == user.company_id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    db.delete(doc)
+    db.commit()
+    return {"status": "success", "message": "Document deleted successfully"}

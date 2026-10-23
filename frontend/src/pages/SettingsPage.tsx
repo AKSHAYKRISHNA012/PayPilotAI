@@ -10,9 +10,10 @@ import confetti from 'canvas-confetti';
 interface SettingsPageProps {
   currentUser: User | null;
   onResetData: () => void;
+  onOpenSubscription?: () => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onResetData }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onResetData, onOpenSubscription }) => {
   const [resetting, setResetting] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -175,6 +176,58 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onReset
           </button>
         </div>
       </form>
+
+      {/* Commercial SaaS Subscription & Plan Card */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4 text-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Active Subscription</span>
+            <h3 className="text-base font-bold text-slate-900 mt-0.5">
+              PayPilot AI {currentUser?.company?.plan_tier ? currentUser.company.plan_tier.toUpperCase() : 'GROWTH'} Plan
+            </h3>
+            <p className="text-slate-500 mt-1">
+              Statutory payroll engine, AI anomaly auditor, and bank export integrations enabled.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-xs uppercase">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              {currentUser?.company?.subscription_status || 'Active'}
+            </span>
+            {onOpenSubscription && (
+              <button
+                onClick={onOpenSubscription}
+                className="cursor-pointer px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs"
+              >
+                Manage Plans / Upgrade
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Headcount Limit</span>
+            <p className="text-lg font-bold text-slate-900 mt-1 font-mono">
+              6 / {currentUser?.company?.max_employees || 100} Employees
+            </p>
+            <span className="text-[11px] text-slate-500">Active payroll roster</span>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Audit Engine Runs</span>
+            <p className="text-lg font-bold text-indigo-600 mt-1">Unlimited</p>
+            <span className="text-[11px] text-slate-500">Multi-rule anomaly detection</span>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Payment Provider</span>
+            <p className="text-lg font-bold text-slate-900 mt-1">Razorpay India</p>
+            <span className="text-[11px] text-slate-500">HMAC-SHA256 verified</span>
+          </div>
+        </div>
+      </div>
 
       {/* Demo Controls Reset Card */}
       <div className="bg-slate-50 rounded-lg border border-slate-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

@@ -234,6 +234,7 @@ def seed_database(db: Session, force: bool = False):
             earned_leave_used=3.0
         )
         db.add(lb)
+    db.commit()
 
     # 3. Users for Demo Role-Switching
     users_data = [
@@ -277,6 +278,7 @@ def seed_database(db: Session, force: bool = False):
             employee_id=u["employee_id"]
         )
         db.add(usr)
+    db.commit()
 
     # 4. Attendance Records for current month
     # Priya Sharma (emp_002) has 4 absent days recorded without approved leave!
@@ -303,6 +305,7 @@ def seed_database(db: Session, force: bool = False):
                 check_out="06:30 PM" if status == "present" else ("01:30 PM" if status == "half_day" else None)
             )
             db.add(rec)
+    db.commit()
 
     # 5. Leave Requests
     leave_reqs = [
@@ -333,6 +336,7 @@ def seed_database(db: Session, force: bool = False):
     ]
     for lr in leave_reqs:
         db.add(lr)
+    db.commit()
 
     # 6. Payroll Periods:
     # A) Previous Month: September 2026 (Processed)
@@ -348,6 +352,7 @@ def seed_database(db: Session, force: bool = False):
         processed_by="Rajesh Nair"
     )
     db.add(prev_period)
+    db.commit()
 
     # Add historical September items
     for item in raw_employees:
@@ -385,6 +390,7 @@ def seed_database(db: Session, force: bool = False):
             audit_status="clean"
         )
         db.add(p_item)
+    db.commit()
 
     # B) Current Active Period: October 2026 (Draft/Calculated)
     curr_period = PayrollPeriod(
@@ -398,6 +404,7 @@ def seed_database(db: Session, force: bool = False):
         created_at=datetime(2026, 10, 1, 9, 0, 0)
     )
     db.add(curr_period)
+    db.commit()
 
     # Add October items with intentional SEEDED ANOMALIES for Hackathon Demo:
     for item in raw_employees:
@@ -463,6 +470,7 @@ def seed_database(db: Session, force: bool = False):
             notes=notes
         )
         db.add(curr_p_item)
+    db.commit()
 
     # 7. Pre-seed the Initial Audit Findings so the Auditor Page is immediately alive and ready to impress!
     findings = [

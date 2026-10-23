@@ -11,6 +11,9 @@ interface NavbarProps {
   onSwitchUser: (userId: string) => void;
   onOpenGuidedDemo: () => void;
   onResetData: () => void;
+  onOpenSubscription?: () => void;
+  onNavigateLanding?: () => void;
+  onOpenAuth?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +22,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchUser,
   onOpenGuidedDemo,
   onResetData,
+  onOpenSubscription,
+  onNavigateLanding,
+  onOpenAuth,
 }) => {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -44,10 +50,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
+      case 'owner':
       case 'admin':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
-            <Shield className="w-3 h-3 text-slate-600" /> HR / Admin
+            <Shield className="w-3 h-3 text-slate-600" /> {role === 'owner' ? 'Owner' : 'HR / Admin'}
           </span>
         );
       case 'payroll_admin':
@@ -69,8 +76,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between no-print">
       {/* Brand & Organization */}
       <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-slate-900 flex items-center justify-center text-white font-bold text-xs">
+        <div
+          onClick={onNavigateLanding}
+          className="flex items-center gap-2.5 cursor-pointer group"
+          title="Go to Public Marketing Website"
+        >
+          <div className="w-7 h-7 rounded-md bg-slate-900 group-hover:bg-indigo-600 transition flex items-center justify-center text-white font-bold text-xs">
             P
           </div>
           <div className="flex items-baseline gap-1.5">
@@ -91,13 +102,35 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2.5">
+        {/* Subscription Plan Badge / Upgrade CTA */}
+        {onOpenSubscription && (
+          <button
+            onClick={onOpenSubscription}
+            className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+          >
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span className="capitalize">{currentUser?.company?.plan_tier || 'Growth'} Plan</span>
+            <span className="text-[10px] text-indigo-500 font-normal hidden sm:inline">• Upgrade</span>
+          </button>
+        )}
+
+        {/* Public Website View */}
+        {onNavigateLanding && (
+          <button
+            onClick={onNavigateLanding}
+            className="cursor-pointer hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition"
+          >
+            <span>Public Site</span>
+          </button>
+        )}
+
         {/* Guided Demo Tour */}
         <button
           onClick={onOpenGuidedDemo}
           className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
         >
           <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-          <span>Guided Pitch Demo</span>
+          <span className="hidden sm:inline">Guided Demo</span>
         </button>
 
         {/* Reset Demo Data */}
@@ -108,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
         >
           <RotateCcw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin text-indigo-600' : ''}`} />
-          <span className="hidden sm:inline">Reset Demo</span>
+          <span className="hidden sm:inline">Reset</span>
         </button>
 
         {/* Role Switcher */}

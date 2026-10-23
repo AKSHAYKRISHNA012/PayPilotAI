@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { GuidedDemoModal } from './components/GuidedDemoModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
+import { AuthModal } from './components/AuthModal';
+import { MarketingLandingPage } from './pages/MarketingLandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
@@ -19,8 +22,13 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [demoUsers, setDemoUsers] = useState<User[]>([]);
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [currentView, setCurrentView] = useState<'marketing' | 'app'>('app'); // Defaults to full working app with live demo data
   const [openDiscrepanciesCount, setOpenDiscrepanciesCount] = useState<number>(4);
   const [isGuidedDemoOpen, setIsGuidedDemoOpen] = useState<boolean>(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [authModalPlan, setAuthModalPlan] = useState<string>('free_trial');
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -72,27 +80,52 @@ export const App: React.FC = () => {
     }
   };
 
-  const refreshDiscrepancies = async () => {
-    try {
-      const fRes = await api.getAuditFindings('period_oct_2026');
-      setOpenDiscrepanciesCount(fRes.summary?.total_open ?? 0);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
         <h2 className="text-xl font-bold tracking-tight">PayPilot AI</h2>
-        <p className="text-xs text-slate-400 mt-1">Starting payroll audit engines...</p>
+        <p className="text-xs text-slate-400 mt-1">Starting statutory engines & multi-rule payroll auditor...</p>
       </div>
     );
   }
 
+  // 1. PUBLIC MARKETING WEBSITE VIEW
+  if (currentView === 'marketing') {
+    return (
+      <>
+        <MarketingLandingPage
+          onEnterApp={() => setCurrentView('app')}
+          onOpenLogin={() => {
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onOpenRegister={(plan) => {
+            setAuthModalMode('register');
+            setAuthModalPlan(plan || 'free_trial');
+            setIsAuthModalOpen(true);
+          }}
+        />
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialMode={authModalMode}
+          initialPlan={authModalPlan}
+          onClose={() => setIsAuthModalOpen(false)}
+          onAuthSuccess={(user) => {
+            setCurrentUser(user);
+            setCurrentView('app');
+          }}
+          demoUsers={demoUsers}
+          onSwitchDemoUser={handleSwitchUser}
+        />
+      </>
+    );
+  }
+
+  // 2. CORE SAAS APPLICATION PORTAL VIEW
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
@@ -100,6 +133,12 @@ export const App: React.FC = () => {
         onSwitchUser={handleSwitchUser}
         onOpenGuidedDemo={() => setIsGuidedDemoOpen(true)}
         onResetData={handleResetData}
+        onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
+        onNavigateLanding={() => setCurrentView('marketing')}
+        onOpenAuth={() => {
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -173,6 +212,7 @@ export const App: React.FC = () => {
             <SettingsPage
               currentUser={currentUser}
               onResetData={handleResetData}
+              onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
             />
           )}
         </main>
@@ -184,6 +224,26 @@ export const App: React.FC = () => {
         onClose={() => setIsGuidedDemoOpen(false)}
         onNavigateTab={setCurrentTab}
         onSwitchUser={handleSwitchUser}
+      />
+
+      {/* SaaS Subscription & Razorpay Modal */}
+      <SubscriptionModal
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => setIsSubscriptionModalOpen(false)}
+        onPlanUpdated={() => initApp()}
+      />
+
+      {/* Auth & Registration Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        initialPlan={authModalPlan}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+        }}
+        demoUsers={demoUsers}
+        onSwitchDemoUser={handleSwitchUser}
       />
     </div>
   );

@@ -1,17 +1,45 @@
 import os
+from typing import List
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    APP_NAME: str = "PayPilot AI"
-    APP_ENV: str = "development"
-    DATABASE_URL: str = "sqlite:///./paypilot.db"
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "paypilot-super-secret-key-hackathon-2026")
+    model_config = ConfigDict(env_file=".env", extra="allow")
+
+    APP_NAME: str = "PayPilot AI Enterprise SaaS"
+    APP_VERSION: str = "2.0.0"
+    APP_ENV: str = os.getenv("APP_ENV", "development")  # development, testing, staging, production
+    DEBUG: bool = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes")
+
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./paypilot.db")
+    DB_ECHO: bool = False
+
+    # Security & Auth
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "paypilot-enterprise-sec-token-fy26-ind-saas")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "paypilot-enterprise-sec-token-fy26-ind-saas")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")) # 24 hours
+    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+
+    # AI Provider
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
+    # Multi-tenancy defaults
     DEFAULT_COMPANY_ID: str = "comp_ind_001"
     DEFAULT_COMPANY_NAME: str = "BharatTech Innovations Pvt. Ltd."
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    # Payment Gateway (Razorpay India)
+    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "rzp_test_paypilot_saas_2026")
+    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "sec_paypilot_live_demo_test")
+    RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "whsec_paypilot_hmac_2026")
+
+    # CORS
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "https://akshaykrishna012.github.io"
+    ]
 
 settings = Settings()

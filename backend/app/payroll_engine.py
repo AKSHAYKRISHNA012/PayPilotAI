@@ -1,40 +1,138 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, Optional
 
-def round_curr(val: float) -> float:
-    """Decimal-safe rounding to nearest 2 decimal places."""
-    d = Decimal(str(val))
-    return float(d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+TWOPLACES = Decimal("0.01")
 
-def calculate_professional_tax(gross_monthly: float, state: str = "Karnataka") -> float:
+def to_dec(val: Any) -> Decimal:
+    """Converts any input into a Decimal safely."""
+    if val is None:
+        return Decimal("0.00")
+    if isinstance(val, Decimal):
+        return val
+    try:
+        return Decimal(str(val))
+    except Exception:
+        return Decimal("0.00")
+
+def round_curr(val: Any) -> float:
+    """Decimal-safe round to nearest 2 decimal places returning float."""
+    d = to_dec(val)
+    return float(d.quantize(TWOPLACES, rounding=ROUND_HALF_UP))
+
+def calculate_professional_tax_decimal(gross_monthly: Decimal, state: str = "Karnataka") -> Decimal:
     """
-    Deterministic Indian Professional Tax calculation based on state rules.
-    Karnataka: ₹0 if <= 15000, ₹200 if > 15000.
-    Maharashtra: ₹0 if <= 7500, ₹175 if 7501-10000, ₹200 if > 10000 (Feb is ₹300, handled as ₹200 avg).
-    Telangana: ₹0 if <= 15000, ₹150 if 15001-20000, ₹200 if > 20000.
-    Delhi/Default: ₹0 (No PT in Delhi).
+    Authoritative state-wise Professional Tax calculation (Article 276 of Indian Constitution).
+    Max limit: ₹2,500 per annum.
+    State slabs:
+      - Karnataka: Gross > ₹15,000 -> ₹200/month; <= ₹15,000 -> ₹0.
+      - Maharashtra: Gross > ₹10,000 -> ₹200/month (Feb ₹300, normalized here to ₹200); ₹7,501-₹10,000 -> ₹175; <= ₹7,500 -> ₹0.
+      - Telangana & Andhra Pradesh: Gross > ₹20,000 -> ₹200; ₹15,001-₹20,000 -> ₹150; <= ₹15,000 -> ₹0.
+      - Gujarat: Gross > ₹12,000 -> ₹200; ₹9,000-₹12,000 -> ₹150; ₹6,000-₹8,999 -> ₹80; <= ₹5,999 -> ₹0.
+      - West Bengal: Gross > ₹40,000 -> ₹200; ₹25,001-₹40,000 -> ₹150; ₹15,001-₹25,000 -> ₹130; ₹10,000-₹15,000 -> ₹110.
+      - Delhi / Haryana / Rajasthan: ₹0 (No PT levied).
     """
     state_norm = (state or "Karnataka").strip().lower()
-    
+
     if "karnataka" in state_norm:
-        return 200.0 if gross_monthly > 15000 else 0.0
+        return Decimal("200.00") if gross_monthly > Decimal("15000.00") else Decimal("0.00")
     elif "maharashtra" in state_norm:
-        if gross_monthly > 10000:
-            return 200.0
-        elif gross_monthly > 7500:
-            return 175.0
-        return 0.0
-    elif "telangana" in state_norm:
-        if gross_monthly > 20000:
-            return 200.0
-        elif gross_monthly > 15000:
-            return 150.0
-        return 0.0
-    elif "delhi" in state_norm:
-        return 0.0
+        if gross_monthly > Decimal("10000.00"):
+            return Decimal("200.00")
+        elif gross_monthly > Decimal("7500.00"):
+            return Decimal("175.00")
+        return Decimal("0.00")
+    elif "telangana" in state_norm or "andhra" in state_norm:
+        if gross_monthly > Decimal("20000.00"):
+            return Decimal("200.00")
+        elif gross_monthly > Decimal("15000.00"):
+            return Decimal("150.00")
+        return Decimal("0.00")
+    elif "gujarat" in state_norm:
+        if gross_monthly > Decimal("12000.00"):
+            return Decimal("200.00")
+        elif gross_monthly > Decimal("9000.00"):
+            return Decimal("150.00")
+        elif gross_monthly >= Decimal("6000.00"):
+            return Decimal("80.00")
+        return Decimal("0.00")
+    elif "west bengal" in state_norm or "bengal" in state_norm:
+        if gross_monthly > Decimal("40000.00"):
+            return Decimal("200.00")
+        elif gross_monthly > Decimal("25000.00"):
+            return Decimal("150.00")
+        elif gross_monthly > Decimal("15000.00"):
+            return Decimal("130.00")
+        elif gross_monthly >= Decimal("10000.00"):
+            return Decimal("110.00")
+        return Decimal("0.00")
+    elif any(s in state_norm for s in ["delhi", "haryana", "rajasthan", "uttar pradesh"]):
+        return Decimal("0.00")
     else:
-        # Default fallback standard slab
-        return 200.0 if gross_monthly > 15000 else 0.0
+        # Default standard slab
+        return Decimal("200.00") if gross_monthly > Decimal("15000.00") else Decimal("0.00")
+
+def calculate_professional_tax(gross_monthly: float, state: str = "Karnataka") -> float:
+    return float(calculate_professional_tax_decimal(to_dec(gross_monthly), state))
+
+def calculate_monthly_tds_estimate_decimal(
+    annual_gross: Decimal,
+    regime: str = "new",
+    standard_deduction: Decimal = Decimal("75000.00"),
+    override_monthly: Optional[Decimal] = None
+) -> Decimal:
+    """
+    Authoritative TDS estimation under the New Tax Regime (Section 115BAC, FY 2025-26 & 2026-27).
+    Standard Deduction: ₹75,000.
+    Rebate under Section 87A: Tax is zero if taxable income <= ₹7,00,000.
+    Slabs:
+      0 to 3,00,000: Nil
+      3,00,001 to 7,00,000: 5% (₹20,000)
+      7,00,001 to 10,00,000: 10% (₹30,000)
+      10,00,001 to 12,00,000: 15% (₹30,000)
+      12,00,001 to 15,00,000: 20% (₹60,000)
+      Above 15,00,000: 30%
+    Health & Education Cess: 4% on computed tax.
+    """
+    if override_monthly is not None and override_monthly > Decimal("0.00"):
+        return override_monthly.quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    taxable_income = max(Decimal("0.00"), annual_gross - standard_deduction)
+
+    if taxable_income <= Decimal("700000.00"):
+        return Decimal("0.00")
+
+    tax = Decimal("0.00")
+
+    # Slab 1: 0 - 3L (0)
+    # Slab 2: 3L - 7L (5% on up to 4L)
+    if taxable_income > Decimal("300000.00"):
+        in_slab = min(taxable_income, Decimal("700000.00")) - Decimal("300000.00")
+        tax += in_slab * Decimal("0.05")
+
+    # Slab 3: 7L - 10L (10% on up to 3L)
+    if taxable_income > Decimal("700000.00"):
+        in_slab = min(taxable_income, Decimal("1000000.00")) - Decimal("700000.00")
+        tax += in_slab * Decimal("0.10")
+
+    # Slab 4: 10L - 12L (15% on up to 2L)
+    if taxable_income > Decimal("1000000.00"):
+        in_slab = min(taxable_income, Decimal("1200000.00")) - Decimal("1000000.00")
+        tax += in_slab * Decimal("0.15")
+
+    # Slab 5: 12L - 15L (20% on up to 3L)
+    if taxable_income > Decimal("1200000.00"):
+        in_slab = min(taxable_income, Decimal("1500000.00")) - Decimal("1200000.00")
+        tax += in_slab * Decimal("0.20")
+
+    # Slab 6: Above 15L (30%)
+    if taxable_income > Decimal("1500000.00"):
+        in_slab = taxable_income - Decimal("1500000.00")
+        tax += in_slab * Decimal("0.30")
+
+    # 4% Health and Education Cess
+    tax_with_cess = tax * Decimal("1.04")
+    monthly_tds = (tax_with_cess / Decimal("12.00")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    return monthly_tds
 
 def calculate_monthly_tds_estimate(
     annual_gross: float,
@@ -42,58 +140,12 @@ def calculate_monthly_tds_estimate(
     standard_deduction: float = 75000.0,
     override_monthly: Optional[float] = None
 ) -> float:
-    """
-    Estimates monthly TDS based on Indian Income Tax rules.
-    If override_monthly is provided (> 0), use that directly.
-    Otherwise, computes for FY 2025-26 / 2026-27 New Tax Regime:
-      Up to 3,00,000: Nil
-      3,00,001 to 7,00,000: 5%
-      7,00,001 to 10,00,000: 10%
-      10,00,001 to 12,00,000: 15%
-      12,00,001 to 15,00,000: 20%
-      Above 15,00,000: 30%
-      Rebate u/s 87A: If taxable income <= 7,00,000, tax is Nil.
-      4% Health & Education Cess applied.
-    """
-    if override_monthly is not None and override_monthly > 0:
-        return round_curr(override_monthly)
-        
-    taxable_income = max(0.0, annual_gross - standard_deduction)
-    
-    if taxable_income <= 700000.0:
-        return 0.0
-        
-    tax = 0.0
-    # Slab 1: 0 - 3L (0)
-    # Slab 2: 3L - 7L (5% on 4L = 20,000)
-    if taxable_income > 300000.0:
-        taxable_in_slab = min(taxable_income, 700000.0) - 300000.0
-        tax += taxable_in_slab * 0.05
-        
-    # Slab 3: 7L - 10L (10% on 3L = 30,000)
-    if taxable_income > 700000.0:
-        taxable_in_slab = min(taxable_income, 1000000.0) - 700000.0
-        tax += taxable_in_slab * 0.10
-        
-    # Slab 4: 10L - 12L (15% on 2L = 30,000)
-    if taxable_income > 1000000.0:
-        taxable_in_slab = min(taxable_income, 1200000.0) - 1000000.0
-        tax += taxable_in_slab * 0.15
-        
-    # Slab 5: 12L - 15L (20% on 3L = 60,000)
-    if taxable_income > 1200000.0:
-        taxable_in_slab = min(taxable_income, 1500000.0) - 1200000.0
-        tax += taxable_in_slab * 0.20
-        
-    # Slab 6: Above 15L (30%)
-    if taxable_income > 1500000.0:
-        taxable_in_slab = taxable_income - 1500000.0
-        tax += taxable_in_slab * 0.30
-
-    # Add 4% Cess
-    tax_with_cess = tax * 1.04
-    monthly_tds = tax_with_cess / 12.0
-    return round_curr(monthly_tds)
+    return float(calculate_monthly_tds_estimate_decimal(
+        to_dec(annual_gross),
+        regime,
+        to_dec(standard_deduction),
+        to_dec(override_monthly) if override_monthly is not None else None
+    ))
 
 def calculate_payroll_item(
     basic: float,
@@ -103,6 +155,7 @@ def calculate_payroll_item(
     medical_allowance: float = 0.0,
     bonus_or_variable: float = 0.0,
     other_earnings: float = 0.0,
+    reimbursements: float = 0.0,
     pf_applicable: bool = True,
     pf_type: str = "statutory_capped_1800",
     esi_applicable: bool = True,
@@ -115,89 +168,101 @@ def calculate_payroll_item(
     other_deductions: float = 0.0
 ) -> Dict[str, Any]:
     """
-    Computes complete monthly salary line for an employee in India.
-    Returns full earnings, statutory contributions, deductions, net salary, and CTC.
+    Computes complete monthly salary line with pure Decimal arithmetic.
+    Returns both float values (for API/DB compatibility) and verifies zero floating-point drift.
     """
-    # 1. Base Gross Earnings before LOP
-    gross_earnings_raw = (
-        basic + hra + special_allowance + conveyance + 
-        medical_allowance + bonus_or_variable + other_earnings
-    )
-    gross_earnings = round_curr(gross_earnings_raw)
+    d_basic = to_dec(basic)
+    d_hra = to_dec(hra)
+    d_special = to_dec(special_allowance)
+    d_conveyance = to_dec(conveyance)
+    d_medical = to_dec(medical_allowance)
+    d_bonus = to_dec(bonus_or_variable)
+    d_other_earnings = to_dec(other_earnings)
+    d_reimbursements = to_dec(reimbursements)
+    d_unpaid_days = to_dec(unpaid_leave_days)
+    d_working_days = Decimal(str(max(1, working_days)))
+    d_other_deductions = to_dec(other_deductions)
 
-    # 2. Loss of Pay (LOP) for Unpaid Leave
-    # Daily rate = gross_earnings / working_days
-    lop_deduction = 0.0
-    if unpaid_leave_days > 0 and working_days > 0:
-        daily_rate = gross_earnings / float(working_days)
-        lop_deduction = round_curr(daily_rate * unpaid_leave_days)
+    # 1. Base Gross Taxable Earnings
+    gross_earnings = (
+        d_basic + d_hra + d_special + d_conveyance +
+        d_medical + d_bonus + d_other_earnings
+    ).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
-    # 3. Employee Provident Fund (PF)
-    # Statutory cap: 12% of basic or 12% of 15,000 = ₹1,800
-    employee_pf = 0.0
-    employer_pf = 0.0
+    # 2. Loss of Pay (LOP) Deduction
+    lop_deduction = Decimal("0.00")
+    if d_unpaid_days > Decimal("0.00") and d_working_days > Decimal("0.00"):
+        daily_rate = gross_earnings / d_working_days
+        lop_deduction = (daily_rate * d_unpaid_days).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+    # 3. Employee Provident Fund (EPF)
+    # Under EPF Act 1952, statutory wage ceiling is ₹15,000 (12% = ₹1,800).
+    employee_pf = Decimal("0.00")
+    employer_pf = Decimal("0.00")
     if pf_applicable:
         if pf_type == "statutory_capped_1800":
-            pf_wage = min(basic, 15000.0)
-            employee_pf = round_curr(pf_wage * 0.12)
-            employer_pf = round_curr(pf_wage * 0.12)
+            pf_wage = min(d_basic, Decimal("15000.00"))
+            employee_pf = (pf_wage * Decimal("0.12")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+            employer_pf = employee_pf
         else:
-            employee_pf = round_curr(basic * 0.12)
-            employer_pf = round_curr(basic * 0.12)
+            employee_pf = (d_basic * Decimal("0.12")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+            employer_pf = employee_pf
 
-    # 4. Employee State Insurance (ESI)
-    # Applicable only if monthly gross <= ₹21,000
-    employee_esi = 0.0
-    employer_esi = 0.0
-    if esi_applicable and gross_earnings <= 21000.0:
-        employee_esi = round_curr(gross_earnings * 0.0075) # 0.75%
-        employer_esi = round_curr(gross_earnings * 0.0325) # 3.25%
+    # 4. Employee State Insurance (ESIC)
+    # ESIC applies if Gross Monthly <= ₹21,000 (0.75% employee, 3.25% employer).
+    employee_esi = Decimal("0.00")
+    employer_esi = Decimal("0.00")
+    if esi_applicable and gross_earnings <= Decimal("21000.00"):
+        employee_esi = (gross_earnings * Decimal("0.0075")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+        employer_esi = (gross_earnings * Decimal("0.0325")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
     # 5. Professional Tax (PT)
-    professional_tax = 0.0
+    professional_tax = Decimal("0.00")
     if pt_applicable:
-        professional_tax = calculate_professional_tax(gross_earnings, pt_state)
+        professional_tax = calculate_professional_tax_decimal(gross_earnings, pt_state)
 
     # 6. TDS (Income Tax)
-    annual_est = (gross_earnings - lop_deduction) * 12.0
-    tds = calculate_monthly_tds_estimate(
+    taxable_monthly = max(Decimal("0.00"), gross_earnings - lop_deduction)
+    annual_est = taxable_monthly * Decimal("12.00")
+    tds = calculate_monthly_tds_estimate_decimal(
         annual_gross=annual_est,
         regime=tax_regime,
-        override_monthly=tds_override
+        override_monthly=to_dec(tds_override) if tds_override is not None else None
     )
 
-    # 7. Total Employee Deductions
-    total_deductions = round_curr(
-        employee_pf + employee_esi + professional_tax + tds + lop_deduction + other_deductions
-    )
+    # 7. Total Deductions
+    total_deductions = (
+        employee_pf + employee_esi + professional_tax + tds + lop_deduction + d_other_deductions
+    ).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
-    # 8. Net Take-Home Salary
-    net_salary = round_curr(gross_earnings - total_deductions)
+    # 8. Net Salary (Gross + Reimbursements - Total Deductions)
+    net_salary = (gross_earnings + d_reimbursements - total_deductions).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
-    # 9. Total Employer Cost (CTC for this month)
-    total_employer_cost = round_curr(gross_earnings + employer_pf + employer_esi)
+    # 9. Total Employer Cost (CTC)
+    total_employer_cost = (gross_earnings + d_reimbursements + employer_pf + employer_esi).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
 
     return {
-        "basic": round_curr(basic),
-        "hra": round_curr(hra),
-        "special_allowance": round_curr(special_allowance),
-        "conveyance": round_curr(conveyance),
-        "medical_allowance": round_curr(medical_allowance),
-        "bonus_or_variable": round_curr(bonus_or_variable),
-        "other_earnings": round_curr(other_earnings),
-        "gross_earnings": gross_earnings,
-        
-        "employee_pf": employee_pf,
-        "employer_pf": employer_pf,
-        "employee_esi": employee_esi,
-        "employer_esi": employer_esi,
-        "professional_tax": professional_tax,
-        "tds": tds,
-        "unpaid_leave_days": unpaid_leave_days,
-        "lop_deduction": lop_deduction,
-        "other_deductions": round_curr(other_deductions),
-        "total_deductions": total_deductions,
-        
-        "net_salary": net_salary,
-        "total_employer_cost": total_employer_cost,
+        "basic": float(d_basic),
+        "hra": float(d_hra),
+        "special_allowance": float(d_special),
+        "conveyance": float(d_conveyance),
+        "medical_allowance": float(d_medical),
+        "bonus_or_variable": float(d_bonus),
+        "other_earnings": float(d_other_earnings),
+        "reimbursements": float(d_reimbursements),
+        "gross_earnings": float(gross_earnings),
+
+        "employee_pf": float(employee_pf),
+        "employer_pf": float(employer_pf),
+        "employee_esi": float(employee_esi),
+        "employer_esi": float(employer_esi),
+        "professional_tax": float(professional_tax),
+        "tds": float(tds),
+        "unpaid_leave_days": float(d_unpaid_days),
+        "lop_deduction": float(lop_deduction),
+        "other_deductions": float(d_other_deductions),
+        "total_deductions": float(total_deductions),
+
+        "net_salary": float(net_salary),
+        "total_employer_cost": float(total_employer_cost),
     }

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { api, formatINR } from '../services/api';
 import { Employee, User } from '../types';
 import {
-  Search, Plus, X, ChevronRight, CheckCircle, AlertCircle
+  Search, Plus, X, ChevronRight, CheckCircle, AlertCircle, FileText
 } from 'lucide-react';
+import { EmployeeDocumentsModal } from '../components/EmployeeDocumentsModal';
 
 interface EmployeesPageProps {
   currentUser: User | null;
@@ -28,6 +29,7 @@ export const EmployeesPage: React.FC<EmployeesPageProps> = ({
 
   // New Employee Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [documentsEmp, setDocumentsEmp] = useState<Employee | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [newEmp, setNewEmp] = useState({
     emp_code: 'BTI-007',
@@ -225,7 +227,15 @@ export const EmployeesPage: React.FC<EmployeesPageProps> = ({
                         {emp.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="py-3 px-3.5 text-right">
+                    <td className="py-3 px-3.5 text-right flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setDocumentsEmp(emp)}
+                        className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"
+                        title="View & Upload KYC Documents"
+                      >
+                        <FileText className="w-3 h-3 text-slate-500" />
+                        <span>Docs</span>
+                      </button>
                       <button
                         onClick={() => handleViewDetails(emp.id)}
                         className="cursor-pointer text-xs font-semibold text-indigo-600 hover:text-indigo-800"
@@ -613,6 +623,14 @@ export const EmployeesPage: React.FC<EmployeesPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Employee Documents & KYC Modal */}
+      <EmployeeDocumentsModal
+        employee={documentsEmp}
+        isOpen={Boolean(documentsEmp)}
+        onClose={() => setDocumentsEmp(null)}
+        userRole={currentUser?.role}
+      />
     </div>
   );
 };
