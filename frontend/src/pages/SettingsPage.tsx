@@ -3,19 +3,30 @@ import { api } from '../services/api';
 import { User } from '../types';
 import {
   Settings, Building, Shield, RotateCcw,
-  CheckCircle, Check, Info, Lock
+  CheckCircle, Check, Info, Lock, Sparkles, Scale
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { toast } from '../components/Toast';
 
 interface SettingsPageProps {
   currentUser: User | null;
   onResetData: () => void;
   onOpenSubscription?: () => void;
+  onOpenOnboarding?: () => void;
+  onOpenLegal?: () => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onResetData, onOpenSubscription }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({
+  currentUser,
+  onResetData,
+  onOpenSubscription,
+  onOpenOnboarding,
+  onOpenLegal,
+}) => {
   const [resetting, setResetting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const [companySettings, setCompanySettings] = useState({
     name: 'BharatTech Innovations Pvt. Ltd.',
@@ -32,16 +43,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onReset
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setSaved(true);
+    toast.success('Company registration details & statutory defaults saved.', 'Settings Updated');
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const handleReset = async () => {
-    if (confirm('Restore demo data to original state with seeded anomalies for pitch presentation?')) {
-      setResetting(true);
-      await onResetData();
-      setResetting(false);
-      confetti();
-    }
+  const handleConfirmReset = async () => {
+    setShowResetConfirm(false);
+    setResetting(true);
+    await onResetData();
+    setResetting(false);
+    toast.info('Demo database restored with 4 seeded anomalies for presentation.', 'Demo State Reset');
+    confetti();
   };
 
   return (
@@ -242,7 +254,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onReset
         </div>
 
         <button
-          onClick={handleReset}
+          onClick={() => setShowResetConfirm(true)}
           disabled={resetting}
           className="cursor-pointer shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-100 text-slate-800"
         >
@@ -250,6 +262,59 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser, onReset
           <span>{resetting ? 'Resetting...' : 'Reset Demo State'}</span>
         </button>
       </div>
+
+      {/* Statutory Onboarding & Legal Center Quick Launch */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {onOpenOnboarding && (
+          <div className="bg-white border border-slate-200 rounded-lg p-5 flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Organization Setup Wizard</span>
+              </h4>
+              <p className="text-[11px] text-slate-500">Relaunch the 4-step statutory onboarding stepper.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenOnboarding}
+              className="cursor-pointer text-xs font-semibold px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
+            >
+              Launch Wizard
+            </button>
+          </div>
+        )}
+
+        {onOpenLegal && (
+          <div className="bg-white border border-slate-200 rounded-lg p-5 flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Scale className="w-4 h-4 text-indigo-600" />
+                <span>Legal & Compliance Center</span>
+              </h4>
+              <p className="text-[11px] text-slate-400">DPDP Act 2023, Terms of Service, 99.9% SLA & VDP.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenLegal}
+              className="cursor-pointer text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+            >
+              View Policies
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        title="Reset Demo Presentation State?"
+        message="This will re-initialize the database with 4 seeded compliance anomalies (Rohan Verma bonus spike, Priya Sharma unbilled absence, Amit Patel negative net pay, Vikram Singh missing bank IFSC) for pitch demonstrations."
+        confirmLabel="Reset Database"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 };

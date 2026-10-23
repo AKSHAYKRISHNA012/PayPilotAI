@@ -7,6 +7,9 @@ import {
   Download, Calculator, Scale, Database, FileSpreadsheet,
   CheckCircle, ArrowUpRight, Shield
 } from 'lucide-react';
+import { LegalCenterModal, LegalTab } from '../components/LegalCenterModal';
+import { CookieBanner } from '../components/CookieBanner';
+import { toast } from '../components/Toast';
 
 interface MarketingLandingPageProps {
   onEnterApp: () => void;
@@ -26,6 +29,10 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
   const [calcAnnualCtc, setCalcAnnualCtc] = useState<number>(1200000);
   const [calcRegime, setCalcRegime] = useState<'new' | 'old'>('new');
   const [calcState, setCalcState] = useState<string>('Karnataka');
+
+  // Legal Modal & Compliance States
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>('privacy');
 
   // Contact form
   const [contactForm, setContactForm] = useState({
@@ -1005,9 +1012,46 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-6 text-xs text-slate-600 font-medium">
-              <span className="hover:text-slate-900 cursor-pointer" onClick={() => alert("PayPilot AI Terms of Service:\n1. Enterprise multi-tenant SaaS application.\n2. All customer personnel data remains property of client organization.\n3. 99.9% uptime SLA.\n4. Encrypted banking exports.")}>Terms of Service</span>
-              <span className="hover:text-slate-900 cursor-pointer" onClick={() => alert("PayPilot AI Privacy Notice:\n1. Fully compliant with Digital Personal Data Protection (DPDP) Act 2023.\n2. Aadhaar numbers masked.\n3. Bank account details encrypted at rest.")}>Privacy Policy</span>
-              <span className="hover:text-slate-900 cursor-pointer" onClick={() => alert("Cookie Policy:\nSession and JWT tokens are used strictly for authentication and tenant isolation.")}>Cookie Policy</span>
+              <button
+                type="button"
+                className="hover:text-slate-900 cursor-pointer bg-transparent border-none p-0 text-xs font-medium text-slate-600"
+                onClick={() => {
+                  setLegalTab('terms');
+                  setIsLegalModalOpen(true);
+                }}
+              >
+                Terms of Service
+              </button>
+              <button
+                type="button"
+                className="hover:text-slate-900 cursor-pointer bg-transparent border-none p-0 text-xs font-medium text-slate-600"
+                onClick={() => {
+                  setLegalTab('privacy');
+                  setIsLegalModalOpen(true);
+                }}
+              >
+                Privacy Policy (DPDP)
+              </button>
+              <button
+                type="button"
+                className="hover:text-slate-900 cursor-pointer bg-transparent border-none p-0 text-xs font-medium text-slate-600"
+                onClick={() => {
+                  setLegalTab('refund');
+                  setIsLegalModalOpen(true);
+                }}
+              >
+                Refund Policy
+              </button>
+              <button
+                type="button"
+                className="hover:text-slate-900 cursor-pointer bg-transparent border-none p-0 text-xs font-medium text-slate-600"
+                onClick={() => {
+                  setLegalTab('security');
+                  setIsLegalModalOpen(true);
+                }}
+              >
+                Security & VDP
+              </button>
               <span className="hover:text-slate-900 cursor-pointer" onClick={onEnterApp}>Interactive Sandbox</span>
             </div>
           </div>
@@ -1021,6 +1065,21 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Trust & Legal Compliance Modal */}
+      <LegalCenterModal
+        isOpen={isLegalModalOpen}
+        initialTab={legalTab}
+        onClose={() => setIsLegalModalOpen(false)}
+      />
+
+      {/* Floating Cookie Consent Banner */}
+      <CookieBanner
+        onOpenLegalPrivacy={() => {
+          setLegalTab('privacy');
+          setIsLegalModalOpen(true);
+        }}
+      />
     </div>
   );
 };

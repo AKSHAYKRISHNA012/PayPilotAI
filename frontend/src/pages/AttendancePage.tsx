@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { AttendanceRecord, User } from '../types';
 import { Plus, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { toast } from '../components/Toast';
 
 interface AttendancePageProps {
   currentUser: User | null;
@@ -47,8 +48,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
       await api.markAttendance(markData);
       setIsMarkModalOpen(false);
       loadAttendance();
+      toast.success(`Attendance status recorded as ${markData.status.toUpperCase()}.`, 'Attendance Logged');
     } catch (err: any) {
-      alert(err.message || 'Failed to record attendance');
+      toast.error(err.message || 'Failed to record attendance', 'Attendance Error');
     }
   };
 

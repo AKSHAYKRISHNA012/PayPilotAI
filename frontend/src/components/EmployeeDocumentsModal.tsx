@@ -5,6 +5,7 @@ import {
   X, FileText, Upload, Trash2, Download,
   CheckCircle, AlertCircle, Shield, FileCheck
 } from 'lucide-react';
+import { toast } from './Toast';
 
 interface EmployeeDocumentsModalProps {
   employee: Employee | null;
@@ -73,14 +74,13 @@ export const EmployeeDocumentsModal: React.FC<EmployeeDocumentsModalProps> = ({
   };
 
   const handleDelete = async (docId: string) => {
-    if (!employee || !confirm('Are you sure you want to delete this document?')) return;
+    if (!employee) return;
     try {
       await api.deleteEmployeeDocument(employee.id, docId);
       setDocuments(docs => docs.filter(d => d.id !== docId));
-      setMessage({ type: 'success', text: 'Document removed successfully.' });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success('KYC document removed.', 'Document Deleted');
     } catch (err: any) {
-      alert(err.message || 'Failed to delete document');
+      toast.error(err.message || 'Failed to delete document', 'Delete Error');
     }
   };
 

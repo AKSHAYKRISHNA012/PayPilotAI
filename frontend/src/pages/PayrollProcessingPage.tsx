@@ -7,6 +7,8 @@ import {
   Filter, Edit, Download, ShieldCheck, ChevronRight, X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { toast } from '../components/Toast';
 
 interface PayrollProcessingPageProps {
   currentUser: User | null;
@@ -29,6 +31,9 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
   // Filters
   const [deptFilter, setDeptFilter] = useState('all');
   const [auditFilter, setAuditFilter] = useState('all');
+
+  // Confirmation modal
+  const [showProcessConfirm, setShowProcessConfirm] = useState(false);
 
   // Edit item modal
   const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
@@ -82,25 +87,16 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
       await api.calculatePayroll(selectedPeriodId);
       await loadPeriodItems(selectedPeriodId);
       await loadPeriods();
+      toast.success('Statutory salary calculation completed for all active employees.', 'Payroll Calculated');
     } catch (err: any) {
-      alert(err.message || 'Calculation failed');
+      toast.error(err.message || 'Calculation failed', 'Calculation Error');
     } finally {
       setCalculating(false);
     }
   };
 
-  const handleProcessPayroll = async () => {
-    if (summary?.flagged_count > 0) {
-      const proceed = confirm(
-        `WARNING: There are still ${summary.flagged_count} flagged payroll discrepancies in this run!\n\nAre you sure you want to approve and finalize processing?`
-      );
-      if (!proceed) return;
-    } else {
-      if (!confirm(`Confirm salary disbursement processing for ${periodDetail?.name}? This will lock the ledger.`)) {
-        return;
-      }
-    }
-
+  const handleConfirmProcessPayroll = async () => {
+    setShowProcessConfirm(false);
     try {
       setProcessing(true);
       await api.processPayroll(selectedPeriodId);
@@ -111,8 +107,9 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
       });
       await loadPeriodItems(selectedPeriodId);
       await loadPeriods();
+      toast.success('Payroll approved & ledger locked. Bank CMS and EPFO files ready.', 'Disbursement Finalized');
     } catch (err: any) {
-      alert(err.message || 'Processing failed');
+      toast.error(err.message || 'Processing failed', 'Processing Error');
     } finally {
       setProcessing(false);
     }
@@ -136,8 +133,9 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
       await api.updatePayrollItem(editingItem.id, editForm);
       setEditingItem(null);
       await loadPeriodItems(selectedPeriodId);
+      toast.success('Adjustments saved and line item recomputed.', 'Adjustment Updated');
     } catch (err: any) {
-      alert(err.message || 'Update failed');
+      toast.error(err.message || 'Update failed', 'Save Error');
     } finally {
       setSavingItem(false);
     }
@@ -214,7 +212,7 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
           </button>
 
           <button
-            onClick={handleProcessPayroll}
+            onClick={() => setShowProcessConfirm(true)}
             disabled={processing || periodDetail?.status === 'processed'}
             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
           >
@@ -599,6 +597,26 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Finalize & Process Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showProcessConfirm}
+        title={
+          (summary?.flagged_count || 0) > 0
+            ? `Approve Payroll with ${(summary?.flagged_count || 0)} Open Discrepancy(ies)?`
+            : `Finalize & Disburse ${periodDetail?.name || 'October 2026'}?`
+        }
+        message={
+          (summary?.flagged_count || 0) > 0
+            ? `There are still ${(summary?.flagged_count || 0)} line item(s) flagged by the AI Auditor. Approving now overrides auditor warnings and locks the payroll ledger for bank disbursement.`
+            : `This will lock the salary ledger, generate official bank CMS payment batches (HDFC/ICICI/SBI), and publish payslips to employee self-service.`
+        }
+        confirmLabel={(summary?.flagged_count || 0) > 0 ? "Override & Finalize" : "Confirm & Finalize"}
+        cancelLabel="Review Ledger"
+        isDestructive={(summary?.flagged_count || 0) > 0}
+        onConfirm={handleConfirmProcessPayroll}
+        onCancel={() => setShowProcessConfirm(false)}
+      />
     </div>
   );
 };

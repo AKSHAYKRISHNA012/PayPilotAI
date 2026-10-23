@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api, formatINR } from '../services/api';
 import { SalaryStructure, User } from '../types';
 import { Edit3 } from 'lucide-react';
+import { toast } from '../components/Toast';
 
 interface SalaryStructurePageProps {
   currentUser: User | null;
@@ -39,8 +40,9 @@ export const SalaryStructurePage: React.FC<SalaryStructurePageProps> = ({ curren
       await api.updateSalaryStructure(editingStructure.employee_id, editingStructure);
       setEditingStructure(null);
       loadStructures();
+      toast.success('Salary breakdown & statutory caps updated.', 'Structure Saved');
     } catch (err: any) {
-      alert(err.message || 'Failed to update salary structure');
+      toast.error(err.message || 'Failed to update salary structure', 'Update Error');
     } finally {
       setSaving(false);
     }

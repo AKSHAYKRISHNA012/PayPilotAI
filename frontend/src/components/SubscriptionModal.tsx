@@ -3,9 +3,10 @@ import { api, formatINR } from '../services/api';
 import { SaaSPlan, SaaSSubscription, Invoice } from '../types';
 import {
   X, Check, ShieldCheck, Zap, CreditCard,
-  Download, Clock, ArrowRight, AlertCircle, FileCheck
+  Download, Clock, ArrowRight, AlertCircle, FileCheck, HelpCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { toast } from './Toast';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -84,10 +85,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       await loadData();
       if (onPlanUpdated) onPlanUpdated();
     } catch (err: any) {
-      alert(err.message || 'Payment processing failed');
+      toast.error(err.message || 'Payment processing failed', 'Billing Error');
     } finally {
       setProcessingPlanId(null);
     }
+  };
+
+  const handleCancelSubscription = () => {
+    toast.info('To cancel or pause your plan without data loss, please contact billing@paypilot.ai or switch to 14-Day Free Trial upon cycle completion. Your data remains protected for 60 days.', 'Subscription Retention');
   };
 
   if (!isOpen) return null;
@@ -345,6 +350,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Retention & Cancellation Link */}
+            {subscription?.plan_tier !== 'free_trial' && (
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Looking to pause or cancel your subscription?</span>
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  className="cursor-pointer text-red-600 hover:text-red-700 underline font-medium"
+                >
+                  Cancel Plan or Request Retention Offer &rarr;
+                </button>
               </div>
             )}
           </div>

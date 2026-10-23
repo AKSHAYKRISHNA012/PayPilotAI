@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import {
   Shield, UserCheck, Users, RotateCcw,
-  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon
+  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon, Lock
 } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -14,6 +15,7 @@ interface NavbarProps {
   onOpenSubscription?: () => void;
   onNavigateLanding?: () => void;
   onOpenAuth?: () => void;
+  onLockSession?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -27,11 +29,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSubscription,
   onNavigateLanding,
   onOpenAuth,
+  onLockSession,
   isMobileMenuOpen = false,
   onToggleMobileMenu,
 }) => {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,12 +48,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleReset = async () => {
-    if (confirm('Restore demo data to original state with seeded anomalies for pitch presentation?')) {
-      setResetting(true);
-      await onResetData();
-      setResetting(false);
-    }
+  const handleConfirmReset = async () => {
+    setShowResetConfirm(false);
+    setResetting(true);
+    await onResetData();
+    setResetting(false);
   };
 
   const getRoleBadge = (role?: string) => {
@@ -151,9 +154,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="hidden sm:inline">Guided Demo</span>
         </button>
 
+        {/* Lock Financial Session */}
+        {onLockSession && (
+          <button
+            onClick={onLockSession}
+            title="Lock financial session (idle protection)"
+            className="cursor-pointer hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
+          >
+            <Lock className="w-3.5 h-3.5 text-slate-500" />
+            <span>Lock</span>
+          </button>
+        )}
+
         {/* Reset Demo Data */}
         <button
-          onClick={handleReset}
+          onClick={() => setShowResetConfirm(true)}
           disabled={resetting}
           title="Restore seeded anomalies for pitch presentation"
           className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
@@ -226,6 +241,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        title="Reset Presentation Environment?"
+        message="Restore demo company records with 4 pre-seeded compliance anomalies (salary spike, unbilled absence, negative pay, missing bank IFSC)?"
+        confirmLabel="Reset State"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </header>
   );
 };

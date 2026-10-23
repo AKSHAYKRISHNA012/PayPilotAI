@@ -7,6 +7,7 @@ import {
   HelpCircle, ChevronRight, X, Filter, FileText, CheckCircle, ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { toast } from '../components/Toast';
 
 interface AIAuditorPageProps {
   currentUser: User | null;
@@ -60,8 +61,9 @@ export const AIAuditorPage: React.FC<AIAuditorPageProps> = ({
       await new Promise((r) => setTimeout(r, 800));
       await api.runPayrollAudit('period_oct_2026');
       await loadFindings();
+      toast.success('AI Auditor scan completed across salary ledger.', 'Audit Complete');
     } catch (err: any) {
-      alert(err.message || 'Audit execution failed');
+      toast.error(err.message || 'Audit execution failed', 'Audit Error');
     } finally {
       setScanning(false);
     }
@@ -77,17 +79,20 @@ export const AIAuditorPage: React.FC<AIAuditorPageProps> = ({
         resolutionNote || `Marked ${newStatus} by ${currentUser?.full_name}`
       );
       if (newStatus === 'Resolved') {
+        toast.success(`Discrepancy resolved: ${selectedFinding.title}`, 'Discrepancy Resolved');
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.7 }
         });
+      } else {
+        toast.info(`Finding updated to ${newStatus}`, 'Audit Updated');
       }
       setSelectedFinding(null);
       setResolutionNote('');
       await loadFindings();
     } catch (err: any) {
-      alert(err.message || 'Failed to update finding status');
+      toast.error(err.message || 'Failed to update finding status', 'Error');
     } finally {
       setResolving(false);
     }

@@ -5,6 +5,7 @@ import {
   Search, Plus, X, ChevronRight, CheckCircle, AlertCircle, FileText
 } from 'lucide-react';
 import { EmployeeDocumentsModal } from '../components/EmployeeDocumentsModal';
+import { toast } from '../components/Toast';
 
 interface EmployeesPageProps {
   currentUser: User | null;
@@ -88,7 +89,7 @@ export const EmployeesPage: React.FC<EmployeesPageProps> = ({
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmp.first_name || !newEmp.last_name || !newEmp.email) {
-      alert('Please fill all required fields');
+      toast.warning('Please fill in employee name and email address.', 'Missing Fields');
       return;
     }
     try {
@@ -96,8 +97,9 @@ export const EmployeesPage: React.FC<EmployeesPageProps> = ({
       await api.createEmployee(newEmp);
       setIsAddModalOpen(false);
       loadEmployees();
+      toast.success(`Employee record created for ${newEmp.first_name} ${newEmp.last_name}.`, 'Employee Added');
     } catch (err: any) {
-      alert(err.message || 'Failed to create employee');
+      toast.error(err.message || 'Failed to create employee', 'Creation Error');
     } finally {
       setFormSubmitting(false);
     }

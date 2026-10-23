@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { LeaveBalance, LeaveRequest, User } from '../types';
 import { Plus, Check, X } from 'lucide-react';
+import { toast } from '../components/Toast';
 
 interface LeavePageProps {
   currentUser: User | null;
@@ -52,20 +53,21 @@ export const LeavePage: React.FC<LeavePageProps> = ({ currentUser }) => {
       await api.applyLeave(newLeave);
       setIsApplyModalOpen(false);
       loadLeaveData();
+      toast.success(`Leave application submitted for ${newLeave.days_count} day(s).`, 'Leave Submitted');
     } catch (err: any) {
-      alert(err.message || 'Failed to submit leave');
+      toast.error(err.message || 'Failed to submit leave', 'Leave Error');
     } finally {
       setApplying(false);
     }
   };
 
   const handleReview = async (id: string, status: 'approved' | 'rejected') => {
-    const comment = prompt(`Enter review comment for ${status}:`, status === 'approved' ? 'Approved' : 'Rejected');
     try {
-      await api.reviewLeave(id, status, comment || undefined);
+      await api.reviewLeave(id, status, status === 'approved' ? 'Approved by Manager' : 'Rejected');
       loadLeaveData();
+      toast.success(`Leave request ${status} successfully.`, `Leave ${status === 'approved' ? 'Approved' : 'Rejected'}`);
     } catch (err: any) {
-      alert(err.message || 'Failed to review leave request');
+      toast.error(err.message || 'Failed to review leave request', 'Review Error');
     }
   };
 
