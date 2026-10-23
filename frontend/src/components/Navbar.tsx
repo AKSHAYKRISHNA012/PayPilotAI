@@ -141,68 +141,36 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-2.5">
-        {/* Subscription Plan Badge / Upgrade CTA */}
+      <div className="flex items-center gap-3">
+        {/* Subscription Plan Badge */}
         {onOpenSubscription && (
           <button
             onClick={onOpenSubscription}
-            className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+            className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition"
           >
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span className="capitalize">{currentUser?.company?.plan_tier || 'Growth'} Plan</span>
-            <span className="text-[10px] text-indigo-500 font-normal hidden sm:inline">• Upgrade</span>
           </button>
         )}
-
-        {/* Public Website View */}
-        {onNavigateLanding && (
-          <button
-            onClick={onNavigateLanding}
-            className="cursor-pointer hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition"
-          >
-            <span>Public Site</span>
-          </button>
-        )}
-
-        {/* Guided Demo Tour */}
-        <button
-          onClick={onOpenGuidedDemo}
-          className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
-        >
-          <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-          <span className="hidden sm:inline">Guided Demo</span>
-        </button>
 
         {/* Lock Financial Session */}
         {onLockSession && (
           <button
             onClick={onLockSession}
             title="Lock financial session (idle protection)"
-            className="cursor-pointer hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
+            className="cursor-pointer p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
           >
-            <Lock className="w-3.5 h-3.5 text-slate-500" />
-            <span>Lock</span>
+            <Lock className="w-3.5 h-3.5 text-slate-600" />
           </button>
         )}
 
-        {/* Reset Demo Data */}
-        <button
-          onClick={() => setShowResetConfirm(true)}
-          disabled={resetting}
-          title="Restore seeded anomalies for pitch presentation"
-          className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
-        >
-          <RotateCcw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin text-indigo-600' : ''}`} />
-          <span className="hidden sm:inline">Reset</span>
-        </button>
-
-        {/* Role Switcher */}
+        {/* Profile & Enterprise Context Menu */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-            className="cursor-pointer flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-md border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-colors text-left"
+            className="cursor-pointer flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-colors text-left"
           >
-            <div className="w-6 h-6 rounded bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">
+            <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
               {currentUser?.full_name?.charAt(0) || 'U'}
             </div>
             <div className="hidden sm:block text-left">
@@ -218,43 +186,93 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Clean Dropdown */}
           {roleDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1.5 z-50">
-              <div className="px-3 py-1.5 border-b border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Switch Demo Persona
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Test role-based access control instantaneously
-                </p>
+            <div className="absolute right-0 mt-1.5 w-80 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in zoom-in-95 duration-100">
+              {/* Profile Card */}
+              <div className="px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                <p className="font-bold text-slate-900 text-xs">{currentUser?.full_name}</p>
+                <p className="text-[11px] text-slate-500">{currentUser?.email}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded uppercase">
+                    {currentUser?.role}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium truncate">
+                    {currentUser?.company?.name}
+                  </span>
+                </div>
               </div>
 
-              <div className="py-1">
-                {demoUsers.map((user) => {
-                  const isSelected = user.id === currentUser?.id;
-                  return (
-                    <button
-                      key={user.id}
-                      onClick={() => {
-                        onSwitchUser(user.id);
-                        setRoleDropdownOpen(false);
-                      }}
-                      className={`cursor-pointer w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                        isSelected ? 'bg-slate-50 font-medium' : ''
-                      }`}
-                    >
-                      <div>
-                        <p className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
-                          {user.full_name}
-                          {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600" />}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {user.designation}
-                        </p>
-                      </div>
-                      <div className="scale-90 origin-right">{getRoleBadge(user.role)}</div>
-                    </button>
-                  );
-                })}
+              {/* Sandbox & Evaluation Actions */}
+              <div className="p-1.5 border-b border-slate-100 space-y-0.5">
+                <button
+                  onClick={() => {
+                    onOpenGuidedDemo();
+                    setRoleDropdownOpen(false);
+                  }}
+                  className="cursor-pointer w-full text-left px-2.5 py-1.5 rounded-md hover:bg-slate-50 text-slate-700 flex items-center gap-2 font-medium"
+                >
+                  <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+                  <span>Launch Guided Product Tour</span>
+                </button>
+
+                {onNavigateLanding && (
+                  <button
+                    onClick={() => {
+                      onNavigateLanding();
+                      setRoleDropdownOpen(false);
+                    }}
+                    className="cursor-pointer w-full text-left px-2.5 py-1.5 rounded-md hover:bg-slate-50 text-slate-700 flex items-center gap-2 font-medium"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>View Public Marketing Site</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setShowResetConfirm(true);
+                    setRoleDropdownOpen(false);
+                  }}
+                  disabled={resetting}
+                  className="cursor-pointer w-full text-left px-2.5 py-1.5 rounded-md hover:bg-slate-50 text-slate-700 flex items-center gap-2 font-medium"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${resetting ? 'animate-spin' : ''}`} />
+                  <span>Restore Demo Seed Anomalies</span>
+                </button>
+              </div>
+
+              {/* Persona Switcher Section */}
+              <div className="p-1.5">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Switch Active Persona
+                </div>
+                <div className="space-y-0.5">
+                  {demoUsers.map((user) => {
+                    const isSelected = user.id === currentUser?.id;
+                    return (
+                      <button
+                        key={user.id}
+                        onClick={() => {
+                          onSwitchUser(user.id);
+                          setRoleDropdownOpen(false);
+                        }}
+                        className={`cursor-pointer w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 transition-colors ${
+                          isSelected ? 'bg-indigo-50/70 text-indigo-950 font-semibold' : 'text-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-xs font-medium flex items-center gap-1.5">
+                            {user.full_name}
+                            {isSelected && <Check className="w-3 h-3 text-indigo-600" />}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {user.designation}
+                          </p>
+                        </div>
+                        <div className="scale-90 origin-right">{getRoleBadge(user.role)}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
