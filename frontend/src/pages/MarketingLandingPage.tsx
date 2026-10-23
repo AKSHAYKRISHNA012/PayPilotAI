@@ -189,18 +189,17 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
       {/* 2. HERO SECTION */}
       <section className="pt-16 pb-20 bg-gradient-to-b from-slate-50 to-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          {/* Statutory Verification Pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-2xs text-slate-700 text-xs font-medium">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Updated for FY 2026-27 Union Budget &bull; Section 115BAC &bull; EPFO ECR Direct Export</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12]">
-            Enterprise Payroll & Statutory HCM Built for Modern Indian Companies
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12] font-sans">
+            Payroll Clarity. Compliance Confidence.
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed font-normal">
-            Automate monthly salary calculations, catch calculation anomalies with deterministic pre-flight audits, and generate bank-ready disbursement files in minutes.
+            Automate payroll operations, identify salary discrepancies, manage employee requests, and simplify statutory compliance — all from one intelligent platform built for Indian businesses.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -209,19 +208,19 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               className="cursor-pointer w-full sm:w-auto px-6 py-3 rounded-lg font-semibold text-sm bg-slate-900 hover:bg-slate-800 text-white shadow-2xs transition-colors flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>Launch Interactive Sandbox</span>
+              <span>Explore Interactive Demo</span>
             </button>
 
             <button
-              onClick={() => onOpenRegister('growth')}
+              onClick={() => onOpenRegister('free_trial')}
               className="cursor-pointer w-full sm:w-auto px-6 py-3 rounded-lg font-semibold text-sm bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-2xs transition-colors flex items-center justify-center gap-1.5"
             >
-              <span>Start 14-Day Free Trial</span>
+              <span>Start Free Trial</span>
               <ArrowRight className="w-4 h-4 text-slate-500" />
             </button>
           </div>
 
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-emerald-600" /> No credit card required
             </span>
@@ -229,7 +228,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <Check className="w-3.5 h-3.5 text-emerald-600" /> Pre-seeded with Indian startup roster
             </span>
             <span className="flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-emerald-600" /> Deterministic compliance rules
+              <Check className="w-3.5 h-3.5 text-emerald-600" /> Codified statutory compliance
             </span>
           </div>
         </div>
@@ -237,14 +236,19 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
         {/* 3. PRODUCT DEMO SHOWCASE (Realistic Enterprise UI) */}
         <div id="showcase" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
           <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-            {/* Window Topbar */}
-            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                <span className="text-xs font-semibold text-slate-700 ml-2">
-                  PayPilot AI HCM Workspace &bull; October 2026 Regular Cycle
+            {/* Window Topbar & Metrics Ribbon */}
+            <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                </div>
+                <span className="font-bold text-slate-900 ml-1">
+                  PayPilot AI HCM Workspace &bull; October 2026 Cycle
+                </span>
+                <span className="hidden lg:inline text-[10px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
+                  Total Disbursed: ₹5,41,200 &bull; 6 Staff
                 </span>
               </div>
 
@@ -256,7 +260,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                     showcaseTab === 'auditor' ? 'bg-slate-900 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Pre-Flight Auditor
+                  Pre-Flight Auditor (4 Flags)
                 </button>
                 <button
                   onClick={() => setShowcaseTab('ledger')}
@@ -264,7 +268,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                     showcaseTab === 'ledger' ? 'bg-slate-900 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Payroll Ledger
+                  Salary Ledger
                 </button>
                 <button
                   onClick={() => setShowcaseTab('banking')}
@@ -607,14 +611,17 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                 <p className="text-3xl font-extrabold text-slate-900 font-mono mt-1">
                   {formatINR(estimatedTakeHome)}
                 </p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Calculated from monthly gross salary of {formatINR(monthlyGross)}
-                </p>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 mt-1">
+                  <span>Gross: <strong className="text-slate-800">{formatINR(monthlyGross)}/mo</strong></span>
+                  <span>&bull;</span>
+                  <span>Annualized In-Hand: <strong className="text-indigo-700">{formatINR(estimatedTakeHome * 12)}</strong></span>
+                </div>
               </div>
 
+              {/* Itemized Deductions & Employer Contributions */}
               <div className="space-y-2 text-xs border-t border-slate-200 pt-3">
                 <div className="flex justify-between text-slate-600">
-                  <span>Basic Wage (50%)</span>
+                  <span>Basic Wage (50% of Gross)</span>
                   <span className="font-mono font-medium text-slate-800">{formatINR(basicSalary)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
@@ -625,26 +632,51 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                   <span>Special Allowance</span>
                   <span className="font-mono font-medium text-slate-800">{formatINR(specialAllowance)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-100">
-                  <span>Employee PF (12% capped)</span>
-                  <span className="font-mono font-medium text-red-600">-{formatINR(employeePf)}</span>
+
+                <div className="pt-2 border-t border-slate-200/80">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Employee Monthly Withholdings</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Employee PF (12% capped at ₹1,800)</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(employeePf)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Professional Tax ({calcState})</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(professionalTax)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Monthly TDS (Section 192 Tax Withheld)</span>
+                      <span className="font-mono font-medium text-red-600">-{formatINR(estimatedMonthlyTds)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Professional Tax ({calcState})</span>
-                  <span className="font-mono font-medium text-red-600">-{formatINR(professionalTax)}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Estimated Monthly TDS (Section 192)</span>
-                  <span className="font-mono font-medium text-red-600">-{formatINR(estimatedMonthlyTds)}</span>
+
+                <div className="pt-2 border-t border-slate-200/80">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Employer Co-Contributions (CTC Included)</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Employer PF (3.67% EPF + 8.33% EPS)</span>
+                      <span className="font-mono font-medium text-slate-800">+{formatINR(employeePf)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Employer Total Monthly CTC Cost</span>
+                      <span className="font-mono font-bold text-slate-900">{formatINR(monthlyGross + employeePf)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <button
-                onClick={onEnterApp}
-                className="cursor-pointer w-full py-2 bg-slate-900 text-white rounded text-xs font-semibold hover:bg-slate-800 transition-colors text-center"
-              >
-                Structure Salaries in PayPilot AI &rarr;
-              </button>
+              <div className="space-y-2 pt-2 border-t border-slate-200">
+                <button
+                  onClick={onEnterApp}
+                  className="cursor-pointer w-full py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors text-center shadow-2xs"
+                >
+                  Configure Salary Structures in PayPilot AI &rarr;
+                </button>
+                <p className="text-[10px] text-slate-400 text-center leading-tight">
+                  Estimates derived from FY 2026-27 CBDT Section 115BAC rules and state PT schedules. For operational planning; not guaranteed tax/legal advice.
+                </p>
+              </div>
             </div>
           </div>
         </div>
