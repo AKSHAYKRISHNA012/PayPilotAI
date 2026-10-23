@@ -233,6 +233,48 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
         </div>
       </div>
 
+      {/* Pre-Flight Readiness Gate Banner */}
+      <div className="bg-slate-900 text-white rounded-lg p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+              Pre-Flight Payroll Readiness Gate &bull; {periodDetail?.name || 'October 2026'}
+            </h2>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+              (summary?.flagged_count || 0) === 0
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+            }`}>
+              {(summary?.flagged_count || 0) === 0 ? '100% READY FOR DISBURSEMENT' : `${summary?.flagged_count} AUDIT FINDINGS OPEN`}
+            </span>
+          </div>
+          <p className="text-xs text-slate-300">
+            {(summary?.flagged_count || 0) === 0
+              ? 'All 4 compliance gates (Section 7, EPFO, Biometric LOP, NACH Banking) passed. Safe to approve and lock ledger.'
+              : `${summary?.flagged_count} line item(s) violate statutory or KYC validation gates. Review AI Auditor findings before disbursing funds.`}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {(summary?.flagged_count || 0) > 0 && (
+            <button
+              onClick={() => onNavigateTab('auditor')}
+              className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Resolve in AI Auditor</span>
+            </button>
+          )}
+          <button
+            onClick={() => onNavigateTab('intelligence')}
+            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition-colors"
+          >
+            <span>Run Digital Twin Simulation</span>
+          </button>
+        </div>
+      </div>
+
       {/* Modern Standard Enterprise Stepper */}
       <div className="bg-white p-4 rounded-lg border border-slate-200">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -282,25 +324,25 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-lg border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Gross Earnings</span>
-          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono text-right">
             {formatINR(summary?.total_gross || 0)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Total Deductions</span>
-          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono text-right">
             -{formatINR(summary?.total_deductions || 0)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Net Take-Home</span>
-          <p className="text-xl font-bold text-indigo-700 mt-1 font-mono">
+          <p className="text-xl font-bold text-indigo-700 mt-1 font-mono text-right">
             {formatINR(summary?.total_net || 0)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Total Employer Cost</span>
-          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono text-right">
             {formatINR(summary?.total_employer_cost || 0)}
           </p>
         </div>
@@ -335,7 +377,7 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
           </div>
           <button
             onClick={() => onNavigateTab('auditor')}
-            className="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 shrink-0"
+            className="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
           >
             Review AI Audit findings &rarr;
           </button>
@@ -388,15 +430,15 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-2.5 px-4">Employee</th>
-                <th className="py-2.5 px-4">Gross Earnings</th>
-                <th className="py-2.5 px-4">PF (Emp)</th>
-                <th className="py-2.5 px-4">Prof Tax</th>
-                <th className="py-2.5 px-4">TDS (Tax)</th>
-                <th className="py-2.5 px-4">LOP Deduction</th>
-                <th className="py-2.5 px-4">Total Deductions</th>
-                <th className="py-2.5 px-4">Net Salary</th>
-                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4 text-left">Employee</th>
+                <th className="py-2.5 px-4 text-right">Gross Earnings</th>
+                <th className="py-2.5 px-4 text-right">PF (Emp)</th>
+                <th className="py-2.5 px-4 text-right">Prof Tax</th>
+                <th className="py-2.5 px-4 text-right">TDS (Tax)</th>
+                <th className="py-2.5 px-4 text-right">LOP Deduction</th>
+                <th className="py-2.5 px-4 text-right">Total Deductions</th>
+                <th className="py-2.5 px-4 text-right">Net Salary</th>
+                <th className="py-2.5 px-4 text-center">Status</th>
                 <th className="py-2.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -408,11 +450,11 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
                     item.audit_status === 'flagged' ? 'bg-red-50/20' : ''
                   }`}
                 >
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 text-left">
                     <p className="font-semibold text-slate-900">{item.employee_name}</p>
                     <p className="text-[11px] text-slate-500 font-mono">{item.emp_code} &bull; {item.department}</p>
                   </td>
-                  <td className="py-3 px-4 font-mono font-semibold text-slate-900">
+                  <td className="py-3 px-4 font-mono font-semibold text-slate-900 text-right">
                     {formatINR(item.gross_earnings)}
                     {item.bonus_or_variable > 0 && (
                       <span className="block text-[10px] text-indigo-600 font-normal">
@@ -420,10 +462,10 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 font-mono text-slate-600">{formatINR(item.employee_pf)}</td>
-                  <td className="py-3 px-4 font-mono text-slate-600">{formatINR(item.professional_tax)}</td>
-                  <td className="py-3 px-4 font-mono text-slate-600">{formatINR(item.tds)}</td>
-                  <td className="py-3 px-4 font-mono text-slate-600">
+                  <td className="py-3 px-4 font-mono text-slate-600 text-right">{formatINR(item.employee_pf)}</td>
+                  <td className="py-3 px-4 font-mono text-slate-600 text-right">{formatINR(item.professional_tax)}</td>
+                  <td className="py-3 px-4 font-mono text-slate-600 text-right">{formatINR(item.tds)}</td>
+                  <td className="py-3 px-4 font-mono text-slate-600 text-right">
                     {item.lop_deduction > 0 ? (
                       <span className="text-amber-700">
                         {formatINR(item.lop_deduction)} ({item.unpaid_leave_days}d)
@@ -432,15 +474,15 @@ export const PayrollProcessingPage: React.FC<PayrollProcessingPageProps> = ({
                       '₹0.00'
                     )}
                   </td>
-                  <td className="py-3 px-4 font-mono font-medium text-slate-900">
+                  <td className="py-3 px-4 font-mono font-medium text-slate-900 text-right">
                     -{formatINR(item.total_deductions)}
                   </td>
-                  <td className="py-3 px-4 font-mono font-bold">
+                  <td className="py-3 px-4 font-mono font-bold text-right">
                     <span className={item.net_salary < 0 ? 'text-red-600' : 'text-slate-900'}>
                       {formatINR(item.net_salary)}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 text-center">
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                         item.audit_status === 'flagged'

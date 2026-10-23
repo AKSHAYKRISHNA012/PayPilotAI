@@ -276,3 +276,187 @@ export interface PayslipData {
     earned_remaining: number;
   };
 }
+
+// ----------------------------------------------------------------------------
+// PAYPILOT INTELLIGENCE ENGINE TYPES
+// ----------------------------------------------------------------------------
+
+export interface SimulationItem {
+  employee_id?: string;
+  employee_name: string;
+  department: string;
+  change_type: 'salary_hike' | 'bonus' | 'new_hire' | 'none';
+  hike_pct?: number;
+  bonus_amount?: number;
+  old_gross: number;
+  new_gross: number;
+  simulated_basic: number;
+  simulated_pf: number;
+  simulated_esi: number;
+  simulated_pt: number;
+  simulated_tds: number;
+  simulated_net: number;
+  old_employer_cost: number;
+  simulated_employer_cost: number;
+  cost_delta: number;
+}
+
+export interface DepartmentBreakdown {
+  department: string;
+  baseline_cost: number;
+  simulated_cost: number;
+  headcount_delta: number;
+  delta: number;
+  delta_pct: number;
+}
+
+export interface SimulationResult {
+  base_period_name: string;
+  baseline_summary: {
+    headcount: number;
+    total_gross: number;
+    total_net: number;
+    total_employer_pf: number;
+    total_cost_ctc: number;
+  };
+  simulated_summary: {
+    headcount: number;
+    total_gross: number;
+    total_net: number;
+    total_employer_pf: number;
+    total_cost_ctc: number;
+  };
+  variance: {
+    cost_delta_monthly: number;
+    cost_delta_pct: number;
+    cost_delta_annualized: number;
+    headcount_added: number;
+  };
+  department_breakdown: DepartmentBreakdown[];
+  simulated_items: SimulationItem[];
+}
+
+export interface SimulationScenario {
+  id: string;
+  name: string;
+  description?: string;
+  base_period_id: string;
+  baseline_total_cost: number;
+  simulated_total_cost: number;
+  cost_delta: number;
+  cost_delta_pct: number;
+  parameters: any;
+  created_by?: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ForecastPoint {
+  month: string;
+  payroll_cost: number;
+  lower_bound: number;
+  upper_bound: number;
+  headcount: number;
+  is_forecast: boolean;
+}
+
+export interface PayrollForecastData {
+  forecast_series: ForecastPoint[];
+  next_month_projection: {
+    month: string;
+    expected_cost: number;
+    lower_bound: number;
+    upper_bound: number;
+    expected_variance_pct: number;
+    projected_headcount: number;
+  };
+  assumptions: string[];
+}
+
+export interface AnomalyRadarItem {
+  id: string;
+  rule_code: string;
+  category: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  title: string;
+  description: string;
+  employee_id: string;
+  employee_name: string;
+  emp_code: string;
+  department: string;
+  expected_value: string;
+  observed_value: string;
+  recommended_investigation_steps: string[];
+  status: 'Open' | 'Investigating' | 'Resolved' | 'Accepted';
+}
+
+export interface AnomalyRadarData {
+  period_id?: string;
+  severity_summary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  open_count: number;
+  anomalies: AnomalyRadarItem[];
+}
+
+export interface PayslipComponentDiff {
+  name: string;
+  prev: number;
+  curr: number;
+  diff: number;
+}
+
+export interface ExplainPayslipResult {
+  employee_id: string;
+  employee_name: string;
+  department: string;
+  current_period: string;
+  comparison_period: string;
+  net_difference: number;
+  components: PayslipComponentDiff[];
+  grounded_explanation: string;
+  is_ai_synthesized: boolean;
+}
+
+export interface HRWorkflowTaskItem {
+  id: string;
+  task_type: string;
+  title: string;
+  description: string;
+  target_employee_id?: string;
+  target_employee_name?: string;
+  department?: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'pending_approval' | 'approved' | 'rejected';
+  requires_approval: boolean;
+  consequential_action: string;
+  payload: any;
+  approved_by?: string;
+  approved_at?: string;
+  created_at: string;
+}
+
+export interface IntelligenceSummary {
+  next_month_projection: {
+    month: string;
+    expected_cost: number;
+    lower_bound: number;
+    upper_bound: number;
+    expected_variance_pct: number;
+    projected_headcount: number;
+  };
+  anomaly_summary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  total_open_anomalies: number;
+  scenarios_count: number;
+  pending_workflow_tasks: number;
+  is_employee: boolean;
+}
+

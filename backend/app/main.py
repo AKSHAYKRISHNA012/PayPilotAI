@@ -10,7 +10,7 @@ from app.seed_data import seed_database
 from app.routes import (
     auth, dashboard, employees, attendance,
     leave, salary_structure, payroll, auditor,
-    assistant, reports, seed, billing
+    assistant, reports, seed, billing, intelligence
 )
 
 app = FastAPI(
@@ -54,6 +54,7 @@ app.include_router(auditor.router)
 app.include_router(assistant.router)
 app.include_router(reports.router)
 app.include_router(seed.router)
+app.include_router(intelligence.router)
 
 @app.on_event("startup")
 def startup_event():

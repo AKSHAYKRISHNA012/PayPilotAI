@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import {
   Shield, UserCheck, Users, RotateCcw,
-  ChevronDown, Check, Play, Building2
+  ChevronDown, Check, Play, Building2, Menu, X as CloseIcon
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -14,6 +14,8 @@ interface NavbarProps {
   onOpenSubscription?: () => void;
   onNavigateLanding?: () => void;
   onOpenAuth?: () => void;
+  isMobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,6 +27,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSubscription,
   onNavigateLanding,
   onOpenAuth,
+  isMobileMenuOpen = false,
+  onToggleMobileMenu,
 }) => {
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -75,7 +79,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between no-print">
       {/* Brand & Organization */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 sm:gap-6">
+        {onToggleMobileMenu && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="lg:hidden p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          >
+            {isMobileMenuOpen ? (
+              <CloseIcon className="w-5 h-5 text-slate-700" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-700" />
+            )}
+          </button>
+        )}
+
         <div
           onClick={onNavigateLanding}
           className="flex items-center gap-2.5 cursor-pointer group"

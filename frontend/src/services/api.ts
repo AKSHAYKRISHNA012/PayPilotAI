@@ -1,4 +1,7 @@
-import { User, Employee, SalaryStructure, AttendanceRecord, LeaveBalance, LeaveRequest, PayrollPeriod, PayrollItem, AuditFinding, PayslipData } from '../types';
+import {
+  User, Employee, SalaryStructure, AttendanceRecord, LeaveBalance, LeaveRequest, PayrollPeriod, PayrollItem, AuditFinding, PayslipData,
+  SimulationResult, SimulationScenario, PayrollForecastData, AnomalyRadarData, ExplainPayslipResult, HRWorkflowTaskItem, IntelligenceSummary
+} from '../types';
 import {
   INITIAL_DEMO_USERS,
   INITIAL_EMPLOYEES,
@@ -79,25 +82,130 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
   // Dashboard stats
   if (url.includes('/api/dashboard/stats')) {
     const findings = getStore<AuditFinding[]>('findings', INITIAL_AUDIT_FINDINGS);
-    const openFindings = findings.filter(f => f.status === 'Open').length;
+    const openFindings = findings.filter(f => f.status === 'Open');
+    const periods = getStore<PayrollPeriod[]>('payroll_periods', INITIAL_PERIODS);
+    const currPeriod = periods.find(p => p.id === 'period_oct_2026') || periods[0];
+    const items = getStore<PayrollItem[]>('payroll_items', INITIAL_PAYROLL_ITEMS);
+    const totalCost = items.reduce((sum, i) => sum + (i.total_employer_cost || 0), 0);
+    const grossTotal = items.reduce((sum, i) => sum + (i.gross_earnings || 0), 0);
+    const netTotal = items.reduce((sum, i) => sum + (i.net_salary || 0), 0);
+    const dedTotal = items.reduce((sum, i) => sum + (i.total_deductions || 0), 0);
+
     return {
-      active_employees: 6,
-      current_payroll_run: {
-        period_name: 'October 2026',
-        status: 'draft',
-        total_gross: 669000,
-        total_net: 541200,
-        total_employer_cost: 687000,
-        flagged_discrepancies: openFindings
+      period_id: currPeriod.id,
+      available_periods: periods.map(p => ({
+        id: p.id,
+        name: p.name,
+        year: p.year,
+        month: p.month,
+        status: p.status,
+        working_days: p.working_days
+      })),
+      total_employees: 6,
+      prior_period_employees: 6,
+      employee_change_text: "+0 change vs last cycle (100% active roster)",
+      present_today: 5,
+      absent_today: 1,
+      on_leave_today: 0,
+      half_day_today: 0,
+      attendance_pct: 83.3,
+      attendance_date_str: "Friday, Oct 23",
+      pending_leaves: 1,
+      current_payroll_amount: totalCost || 590800,
+      gross_earnings_amount: grossTotal || 570000,
+      net_salary_amount: netTotal || 492000,
+      total_deductions_amount: dedTotal || 78000,
+      mom_variance_pct: 5.5,
+      mom_variance_amount: 30800,
+      current_payroll_period: currPeriod.name,
+      current_payroll_status: currPeriod.status,
+      discrepancies_count: openFindings.length,
+      discrepancies_summary: {
+        total_open: openFindings.length,
+        critical: openFindings.filter(f => f.severity === 'CRITICAL').length,
+        high: openFindings.filter(f => f.severity === 'HIGH').length,
+        medium: openFindings.filter(f => f.severity === 'MEDIUM').length,
+        low: openFindings.filter(f => f.severity === 'LOW').length,
+        resolved: findings.filter(f => f.status === 'Resolved' || f.status === 'Accepted').length,
+        top_findings: openFindings.slice(0, 5)
       },
-      attendance: {
-        today_present_rate: 94.2,
-        present_count: 5,
-        absent_count: 1
+      action_center: {
+        pending_approvals: [
+          {
+            id: "lr_001",
+            employee_id: "emp_005",
+            employee_name: "Amit Patel",
+            emp_code: "BTI-005",
+            department: "Sales",
+            leave_type: "Casual",
+            days_count: 2.0,
+            start_date: "Oct 26",
+            end_date: "Oct 27",
+            reason: "Family wedding in Ahmedabad",
+            applied_on: "Oct 22"
+          }
+        ],
+        deadlines: [
+          {
+            id: "dl_1",
+            title: "Attendance & Leave Freeze",
+            due_date: "Oct 25, 2026",
+            status: "Upcoming",
+            urgency: "warning",
+            description: "Lock monthly biometric logs & leave approvals for payroll cutoff"
+          },
+          {
+            id: "dl_2",
+            title: "Maker-Checker Audit Review",
+            due_date: "Oct 28, 2026",
+            status: openFindings.length > 0 ? "Action Required" : "Ready",
+            urgency: openFindings.length > 0 ? "critical" : "neutral",
+            description: openFindings.length > 0 ? `${openFindings.length} audit flags require sign-off before approval` : "All automated pre-flight checks passed"
+          },
+          {
+            id: "dl_3",
+            title: "Direct Net Salary Payout",
+            due_date: "Oct 31, 2026",
+            status: "Scheduled",
+            urgency: "neutral",
+            description: `Direct NACH / HDFC CMS upload for ₹${(netTotal || 492000).toLocaleString('en-IN')}`
+          },
+          {
+            id: "dl_4",
+            title: "Statutory EPFO & ESIC Remittance",
+            due_date: "Nov 15, 2026",
+            status: "Scheduled",
+            urgency: "neutral",
+            description: "Monthly ECR challan generation and filing deadline"
+          }
+        ],
+        incomplete_records: [
+          {
+            employee_id: "emp_004",
+            employee_name: "Vikram Singh",
+            emp_code: "BTI-004",
+            department: "Engineering",
+            missing_fields: ["Bank Details (Account/IFSC)"]
+          }
+        ],
+        failed_operations: openFindings.length > 0 ? [
+          {
+            id: "blk_1",
+            type: "PAYROLL_APPROVAL_BLOCKED",
+            severity: "CRITICAL",
+            title: "Payroll Disbursement Blocked by Pre-Flight Audit",
+            details: `${openFindings.length} open discrepancies detected. Resolution required before release.`,
+            action_tab: "auditor"
+          }
+        ] : []
       },
-      leaves: {
-        pending_approvals: 2,
-        on_leave_today: 0
+      upcoming_payroll_date: "October 31, 2026",
+      currency: "INR",
+      currency_symbol: "₹",
+      company_meta: {
+        company_name: "BharatTech Solutions Pvt Ltd",
+        is_demo_data: true,
+        workspace_label: "Demo Sandbox · BharatTech Solutions Pvt Ltd"
       }
     } as any;
   }
@@ -105,19 +213,25 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
   // Dashboard charts
   if (url.includes('/api/dashboard/charts')) {
     return {
-      monthly_payroll_trend: [
-        { month: 'Jun 26', gross: 610000, net: 495000 },
-        { month: 'Jul 26', gross: 625000, net: 508000 },
-        { month: 'Aug 26', gross: 630000, net: 512000 },
-        { month: 'Sep 26', gross: 642000, net: 520000 },
-        { month: 'Oct 26', gross: 669000, net: 541200 }
+      monthly_trend: [
+        { month: 'Jun 2026', payroll_cost: 505000, gross_earnings: 480000, net_disbursed: 420000, employees: 5 },
+        { month: 'Jul 2026', payroll_cost: 520000, gross_earnings: 495000, net_disbursed: 435000, employees: 5 },
+        { month: 'Aug 2026', payroll_cost: 545000, gross_earnings: 520000, net_disbursed: 455000, employees: 6 },
+        { month: 'Sep 2026', payroll_cost: 560000, gross_earnings: 535000, net_disbursed: 468000, employees: 6 },
+        { month: 'Oct 2026', payroll_cost: 590800, gross_earnings: 570000, net_disbursed: 492000, employees: 6 }
       ],
-      department_breakdown: [
-        { department: 'Engineering', total_cost: 328600, headcount: 2 },
-        { department: 'Marketing', total_cost: 101800, headcount: 1 },
-        { department: 'Design', total_cost: 81800, headcount: 1 },
-        { department: 'Human Resources', total_cost: 92800, headcount: 1 },
-        { department: 'Sales', total_cost: 74800, headcount: 1 }
+      attendance_breakdown: [
+        { name: "Present", count: 18, value: 81.8, color: "#0F172A" },
+        { name: "Approved Leave", count: 2, value: 9.1, color: "#4338CA" },
+        { name: "Half Day", count: 1, value: 4.5, color: "#D97706" },
+        { name: "Absent (Unapproved)", count: 1, value: 4.5, color: "#DC2626" }
+      ],
+      department_distribution: [
+        { department: 'Engineering', count: 2, monthly_cost: 295000 },
+        { department: 'Marketing', count: 1, monthly_cost: 95000 },
+        { department: 'Design', count: 1, monthly_cost: 80000 },
+        { department: 'Sales', count: 1, monthly_cost: 55000 },
+        { department: 'Human Resources', count: 1, monthly_cost: 45000 }
       ]
     } as any;
   }
@@ -126,10 +240,50 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
   if (url.includes('/api/dashboard/recent-activity')) {
     return {
       activities: [
-        { id: '1', action: 'Draft Run Created', description: 'October 2026 payroll calculation batch initialized', timestamp: '10 mins ago', user: 'System' },
-        { id: '2', action: 'Audit Scan', description: 'AI Payroll Auditor flagged 4 potential discrepancies', timestamp: '8 mins ago', user: 'AI Auditor' },
-        { id: '3', action: 'Leave Requested', description: 'Rohan Verma applied for 2 days Casual Leave', timestamp: '2 hours ago', user: 'Rohan Verma' },
-        { id: '4', action: 'Attendance Clock-In', description: 'Priya Sharma logged in via Bengaluru Geofence', timestamp: 'Today 09:12 AM', user: 'Priya Sharma' }
+        {
+          id: '1',
+          action: 'PAYROLL_AUDIT_RAN',
+          category: 'AUDIT',
+          target_tab: 'auditor',
+          actor_name: 'AI Payroll Auditor',
+          actor_role: 'Compliance Engine',
+          actor_initials: 'AI',
+          details: 'AI Payroll Auditor flagged 4 potential discrepancies in October 2026 run',
+          timestamp: 'Today, 11:30 AM'
+        },
+        {
+          id: '2',
+          action: 'LEAVE_APPLIED',
+          category: 'LEAVE',
+          target_tab: 'leave',
+          actor_name: 'Amit Patel',
+          actor_role: 'Staff / Sales',
+          actor_initials: 'AP',
+          details: 'Amit Patel submitted 2-day casual leave request (Family wedding)',
+          timestamp: 'Today, 10:15 AM'
+        },
+        {
+          id: '3',
+          action: 'PAYROLL_CALCULATED',
+          category: 'PAYROLL',
+          target_tab: 'payroll',
+          actor_name: 'Rajesh Nair',
+          actor_role: 'Payroll Head',
+          actor_initials: 'RN',
+          details: 'Calculated salary draft for October 2026 for 6 active employees',
+          timestamp: 'Yesterday, 04:45 PM'
+        },
+        {
+          id: '4',
+          action: 'ATTENDANCE_PUNCH',
+          category: 'EMPLOYEE',
+          target_tab: 'attendance',
+          actor_name: 'Sneha Rao',
+          actor_role: 'Staff / Design',
+          actor_initials: 'SR',
+          details: 'Sneha Rao marked web attendance punch in Koramangala HQ',
+          timestamp: 'Oct 22, 09:30 AM'
+        }
       ]
     } as any;
   }
@@ -398,12 +552,292 @@ const mockRequestHandler = async <T>(url: string, options: RequestInit): Promise
     } as any;
   }
 
+  // Intelligence Engine Mocks
+  if (url.includes('/api/intelligence/summary')) {
+    return {
+      next_month_projection: {
+        month: 'Nov 2026',
+        expected_cost: 704175,
+        lower_bound: 686570,
+        upper_bound: 721779,
+        expected_variance_pct: 2.5,
+        projected_headcount: 6
+      },
+      anomaly_summary: { critical: 2, high: 2, medium: 1, low: 0 },
+      total_open_anomalies: 5,
+      scenarios_count: 2,
+      pending_workflow_tasks: 3,
+      is_employee: me.role === 'employee'
+    } as any;
+  }
+
+  if (url.includes('/api/intelligence/digital-twin/scenarios')) {
+    const savedScenarios = getStore<any[]>('sim_scenarios', [
+      {
+        id: 'sim_demo_01',
+        name: 'Q1 2027 Engineering 10% Hike & 2 Dev Hires',
+        description: 'Assessing engineering salary revision plus adding 2 Junior Full-Stack engineers.',
+        base_period_id: 'period_oct_2026',
+        baseline_total_cost: 687000,
+        simulated_total_cost: 825400,
+        cost_delta: 138400,
+        cost_delta_pct: 20.1,
+        status: 'reviewed',
+        created_at: '2026-10-23T14:30:00Z',
+        parameters: {
+          salary_increment_pct: 10,
+          bonus_pool: 0,
+          new_hires_count: 2
+        }
+      }
+    ]);
+    return { scenarios: savedScenarios } as any;
+  }
+
+  if (url.includes('/api/intelligence/digital-twin/simulate')) {
+    let body: any = {};
+    try { body = JSON.parse(options.body as string); } catch {}
+    const hike = Number(body.department_hikes?.Engineering || body.salary_increment_pct || 10);
+    const bonus = Number(body.bonus_pool || 0);
+    const newHires = body.new_hires || [];
+    const baseline = 687000;
+    const delta = (baseline * (hike / 100)) + bonus + (newHires.length * 62000);
+    const simulated = baseline + delta;
+
+    return {
+      base_period_name: 'October 2026',
+      baseline_summary: {
+        headcount: 6,
+        total_gross: 669000,
+        total_net: 541200,
+        total_employer_pf: 10800,
+        total_cost_ctc: baseline
+      },
+      simulated_summary: {
+        headcount: 6 + newHires.length,
+        total_gross: 669000 + delta * 0.95,
+        total_net: 541200 + delta * 0.78,
+        total_employer_pf: 10800 + (newHires.length * 1800),
+        total_cost_ctc: simulated
+      },
+      variance: {
+        cost_delta_monthly: Math.round(delta),
+        cost_delta_pct: Number((delta / baseline * 100).toFixed(1)),
+        cost_delta_annualized: Math.round(delta * 12),
+        headcount_added: newHires.length
+      },
+      department_breakdown: [
+        { department: 'Engineering', baseline_cost: 328600, simulated_cost: 328600 * (1 + hike/100) + (newHires.length * 62000), headcount_delta: newHires.length, delta: 328600 * (hike/100) + (newHires.length * 62000), delta_pct: hike },
+        { department: 'Marketing', baseline_cost: 101800, simulated_cost: 101800, headcount_delta: 0, delta: 0, delta_pct: 0 },
+        { department: 'Design', baseline_cost: 81800, simulated_cost: 81800, headcount_delta: 0, delta: 0, delta_pct: 0 },
+        { department: 'Operations', baseline_cost: 174800, simulated_cost: 174800, headcount_delta: 0, delta: 0, delta_pct: 0 }
+      ],
+      simulated_items: [
+        { employee_name: 'Alice Roy', department: 'Engineering', change_type: 'salary_hike', hike_pct: hike, old_gross: 215000, new_gross: 215000 * (1 + hike/100), simulated_basic: 107500 * (1 + hike/100), simulated_pf: 1800, simulated_esi: 0, simulated_pt: 200, simulated_tds: 23500, simulated_net: 191500 * (1 + hike/100), old_employer_cost: 216800, simulated_employer_cost: 216800 + (215000 * hike/100), cost_delta: 215000 * hike/100 },
+        { employee_name: 'Bob Sen', department: 'Product', change_type: 'none', old_gross: 110000, new_gross: 110000, simulated_basic: 55000, simulated_pf: 1800, simulated_esi: 0, simulated_pt: 200, simulated_tds: 8500, simulated_net: 99500, old_employer_cost: 111800, simulated_employer_cost: 111800, cost_delta: 0 },
+        ...newHires.map((nh: any, idx: number) => ({
+          employee_name: nh.designation || `Simulated Hire #${idx+1}`,
+          department: nh.department || 'Engineering',
+          change_type: 'new_hire' as const,
+          old_gross: 0,
+          new_gross: nh.monthly_gross || 60000,
+          simulated_basic: (nh.monthly_gross || 60000) * 0.5,
+          simulated_pf: 1800,
+          simulated_esi: 0,
+          simulated_pt: 200,
+          simulated_tds: 2500,
+          simulated_net: (nh.monthly_gross || 60000) - 4500,
+          old_employer_cost: 0,
+          simulated_employer_cost: (nh.monthly_gross || 60000) + 1800,
+          cost_delta: (nh.monthly_gross || 60000) + 1800
+        }))
+      ]
+    } as any;
+  }
+
+  if (url.includes('/api/intelligence/forecast')) {
+    return {
+      forecast_series: [
+        { month: 'Jul 2026', payroll_cost: 645000, lower_bound: 645000, upper_bound: 645000, headcount: 5, is_forecast: false },
+        { month: 'Aug 2026', payroll_cost: 660000, lower_bound: 660000, upper_bound: 660000, headcount: 5, is_forecast: false },
+        { month: 'Sep 2026', payroll_cost: 672000, lower_bound: 672000, upper_bound: 672000, headcount: 6, is_forecast: false },
+        { month: 'Oct 2026', payroll_cost: 687000, lower_bound: 687000, upper_bound: 687000, headcount: 6, is_forecast: false },
+        { month: 'Nov 2026', payroll_cost: 704175, lower_bound: 686570, upper_bound: 721779, headcount: 6, is_forecast: true },
+        { month: 'Dec 2026', payroll_cost: 721779, lower_bound: 692908, upper_bound: 750650, headcount: 7, is_forecast: true },
+        { month: 'Jan 2027', payroll_cost: 739823, lower_bound: 695433, upper_bound: 784212, headcount: 7, is_forecast: true },
+        { month: 'Feb 2027', payroll_cost: 758319, lower_bound: 705236, upper_bound: 811401, headcount: 7, is_forecast: true }
+      ],
+      next_month_projection: {
+        month: 'Nov 2026',
+        expected_cost: 704175,
+        lower_bound: 686570,
+        upper_bound: 721779,
+        expected_variance_pct: 2.5,
+        projected_headcount: 6
+      },
+      assumptions: [
+        'Historical run-rate baseline calculated across 4 consecutive payroll cycles.',
+        'Assumes statutory 12% EPF (capped at ₹1,800/mo) and Karnataka PT rules remain static.',
+        'Reflects 1 scheduled hire in December 2026 (Engineering Department).',
+        'Uncertainty band expands by ±1.5% each additional forward month to reflect attendance variability and variable bonus timing.'
+      ]
+    } as any;
+  }
+
+  if (url.includes('/api/intelligence/anomalies')) {
+    return {
+      period_id: 'period_oct_2026',
+      severity_summary: { critical: 2, high: 2, medium: 1, low: 0 },
+      open_count: 5,
+      anomalies: [
+        {
+          id: 'anom_01',
+          rule_code: 'VARIANCE_SPIKE',
+          category: 'Salary Spike',
+          severity: 'CRITICAL',
+          title: '38.2% Gross Pay Surge for Vikram Malhotra',
+          description: 'Gross compensation rose from ₹76,000 to ₹105,000 without an approved salary hike record or documented appraisal event.',
+          employee_id: 'emp_006',
+          employee_name: 'Vikram Malhotra',
+          emp_code: 'EMP-006',
+          department: 'Sales',
+          expected_value: '₹76,000.00 gross',
+          observed_value: '₹105,000.00 gross',
+          recommended_investigation_steps: [
+            'Confirm whether Sales Commission or festival bonus was included in monthly base earnings.',
+            'Cross-check maker-checker approvals in the HR change log.',
+            'Ensure Section 115BAC TDS was recomputed for higher tax bracket.'
+          ],
+          status: 'Open'
+        },
+        {
+          id: 'anom_02',
+          rule_code: 'NEGATIVE_NET_PAY',
+          category: 'Statutory Violation',
+          severity: 'CRITICAL',
+          title: 'Negative Net Payout (-₹7,000) for Rahul Sharma',
+          description: 'Deductions (₹80,000) exceeded gross pay (₹73,000) due to unbudgeted laptop recovery, violating Section 7 of Payment of Wages Act.',
+          employee_id: 'emp_002',
+          employee_name: 'Rahul Sharma',
+          emp_code: 'EMP-002',
+          department: 'Engineering',
+          expected_value: 'Min 50% statutory net take-home (₹36,500)',
+          observed_value: '-₹7,000.00 net payout',
+          recommended_investigation_steps: [
+            'Cap monthly asset recovery to maximum 50% of gross earnings.',
+            'Reschedule residual ₹43,500 recovery balance across upcoming November/December payrolls.',
+            'Generate corrected payslip before locking bank disbursement batch.'
+          ],
+          status: 'Open'
+        },
+        {
+          id: 'anom_03',
+          rule_code: 'MISSING_BANK_CREDENTIALS',
+          category: 'Disbursement Blocker',
+          severity: 'HIGH',
+          title: 'Missing NACH / Bank Account for Ananya Desai',
+          description: 'Employee lacks active IFSC and verified bank account number in core records. Direct credit batch will reject.',
+          employee_id: 'emp_005',
+          employee_name: 'Ananya Desai',
+          emp_code: 'EMP-005',
+          department: 'Human Resources',
+          expected_value: 'Valid 11-character IFSC and bank account',
+          observed_value: 'Account: Not Submitted',
+          recommended_investigation_steps: [
+            'Dispatch urgent document reminder via HR Workflow Agent.',
+            'Verify cancelled cheque or digital bank passbook before processing.'
+          ],
+          status: 'Open'
+        }
+      ]
+    } as any;
+  }
+
+  if (url.includes('/api/intelligence/explain-payslip')) {
+    let body: any = {};
+    try { body = JSON.parse(options.body as string); } catch {}
+    return {
+      employee_id: body.employee_id || 'emp_001',
+      employee_name: 'Alice Roy',
+      department: 'Engineering',
+      current_period: body.current_period_id || 'period_oct_2026',
+      comparison_period: body.comparison_period_id || 'period_sep_2026',
+      net_difference: -5451.61,
+      components: [
+        { name: 'Gross Earnings', prev: 215000, curr: 208096.77, diff: -6903.23 },
+        { name: 'Basic Earned', prev: 107500, curr: 104048.39, diff: -3451.61 },
+        { name: 'HRA Earned', prev: 53750, curr: 52024.19, diff: -1725.81 },
+        { name: 'Special Allowance', prev: 53750, curr: 52024.19, diff: -1725.81 },
+        { name: 'Loss of Pay (LOP) Deduction', prev: 0, curr: 6903.23, diff: 6903.23 },
+        { name: 'TDS (Income Tax)', prev: 21500, curr: 20048.38, diff: -1451.62 },
+        { name: 'Employee PF (12%)', prev: 1800, curr: 1800, diff: 0 },
+        { name: 'Professional Tax', prev: 200, curr: 200, diff: 0 },
+        { name: 'Net Take-Home Pay', prev: 191500, curr: 186048.39, diff: -5451.61 }
+      ],
+      grounded_explanation: `### Mathematically Grounded Payslip Explanation\n\nYour net take-home salary for October 2026 reduced by **₹5,451.61** (from ₹1,91,500.00 to ₹1,86,048.39).\n\n- **Loss of Pay (LOP) Deduction (+₹6,903.23):** You had 1 unapproved leave day in October (attendance log: 21 of 22 working days). Under Indian payroll rules, daily gross rate is \`₹2,15,000 / 31 = ₹6,903.23\`.\n- **Tax Adjustment (-₹1,451.62):** Because your taxable income for the month decreased due to LOP, your Section 115BAC monthly TDS withholding was automatically recalculated downward from ₹21,500 to ₹20,048.38, saving you tax.\n- **Statutory Stability:** Your EPF contribution remained capped at the statutory limit of **₹1,800.00** and Karnataka PT at **₹200.00**.`,
+      is_ai_synthesized: true
+    } as any;
+  }
+
+  if (url.includes('/api/intelligence/workflow/tasks')) {
+    const tasks = getStore<any[]>('hr_workflow_tasks', [
+      {
+        id: 'task_demo_01',
+        task_type: 'salary_hike_approval',
+        title: 'Authorize 10% Senior Engineering Merit Hike',
+        description: 'Annual appraisal cycle increment for Alice Roy from ₹2,15,000/mo to ₹2,36,500/mo (+₹21,500/mo). Requires authorized HR approval.',
+        target_employee_id: 'emp_001',
+        target_employee_name: 'Alice Roy',
+        department: 'Engineering',
+        severity: 'high',
+        status: 'pending_approval',
+        requires_approval: true,
+        consequential_action: 'Update salary structure and recalculate ongoing payroll cycle.',
+        payload: { employee_id: 'emp_001', hike_pct: 10, new_gross: 236500 },
+        created_at: '2026-10-23T11:00:00Z'
+      },
+      {
+        id: 'task_demo_02',
+        task_type: 'missing_bank_account',
+        title: 'Dispatch Bank Account & NACH Mandatory Notification',
+        description: 'Ananya Desai has not uploaded bank passbook or cancelled cheque. Disbursement batch will reject without KYC resolution.',
+        target_employee_id: 'emp_005',
+        target_employee_name: 'Ananya Desai',
+        department: 'Human Resources',
+        severity: 'high',
+        status: 'pending_approval',
+        requires_approval: true,
+        consequential_action: 'Send automated reminder email with upload link and freeze direct credit queue.',
+        payload: { employee_id: 'emp_005' },
+        created_at: '2026-10-23T12:30:00Z'
+      },
+      {
+        id: 'task_demo_03',
+        task_type: 'onboarding_checklist',
+        title: 'Complete Onboarding Verification for Neha Gupta',
+        description: 'Verify Aadhaar masking, PF UAN linking, and Form 11 statutory declaration for new hire in Design.',
+        target_employee_id: 'emp_004',
+        target_employee_name: 'Neha Gupta',
+        department: 'Design',
+        severity: 'medium',
+        status: 'pending_approval',
+        requires_approval: true,
+        consequential_action: 'Mark onboarding workflow completed and enroll into EPFO electronic challan portal.',
+        payload: { employee_id: 'emp_004' },
+        created_at: '2026-10-23T09:15:00Z'
+      }
+    ]);
+    return { tasks } as any;
+  }
+
   // Reset Seed
   if (url.includes('/api/seed/reset')) {
     localStorage.removeItem('paypilot_store_findings');
     localStorage.removeItem('paypilot_store_payroll_items');
     localStorage.removeItem('paypilot_store_payroll_periods');
     localStorage.removeItem('paypilot_store_leave_requests');
+    localStorage.removeItem('paypilot_store_sim_scenarios');
+    localStorage.removeItem('paypilot_store_hr_workflow_tasks');
     return { message: 'Reset demo data successfully' } as any;
   }
 
@@ -422,9 +856,9 @@ export const api = {
   getMe: () => request<User>('/api/auth/me'),
 
   // Dashboard
-  getDashboardStats: () => request<any>('/api/dashboard/stats'),
-  getDashboardCharts: () => request<any>('/api/dashboard/charts'),
-  getRecentActivity: () => request<{ activities: any[] }>('/api/dashboard/recent-activity'),
+  getDashboardStats: (periodId?: string) => request<any>(`/api/dashboard/stats${periodId ? `?period_id=${encodeURIComponent(periodId)}` : ''}`),
+  getDashboardCharts: (periodId?: string) => request<any>(`/api/dashboard/charts${periodId ? `?period_id=${encodeURIComponent(periodId)}` : ''}`),
+  getRecentActivity: (limit: number = 10) => request<{ activities: any[] }>(`/api/dashboard/recent-activity?limit=${limit}`),
 
   // Employees
   getEmployees: (search?: string, department?: string, status?: string) => {
@@ -631,6 +1065,86 @@ export const api = {
   deleteEmployeeDocument: (employeeId: string, docId: string) =>
     request<any>(`/api/employees/${employeeId}/documents/${docId}`, {
       method: 'DELETE'
+    }),
+
+  // PayPilot Intelligence Engine
+  getIntelligenceSummary: () =>
+    request<IntelligenceSummary>('/api/intelligence/summary'),
+
+  simulateDigitalTwin: (params: {
+    base_period_id?: string;
+    salary_increment_pct?: number;
+    department_hikes?: Record<string, number>;
+    individual_hikes?: Record<string, number>;
+    new_hires?: Array<{
+      designation: string;
+      department: string;
+      monthly_gross: number;
+      state?: string;
+    }>;
+    bonus_pool?: number;
+    bonus_department?: string;
+  }) =>
+    request<SimulationResult>('/api/intelligence/digital-twin/simulate', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
+
+  saveSimulationScenario: (data: {
+    name: string;
+    description?: string;
+    base_period_id: string;
+    simulation_result: SimulationResult;
+    parameters: any;
+  }) =>
+    request<{
+      status: string;
+      scenario_id: string;
+      name: string;
+      cost_delta: number;
+      cost_delta_pct: number;
+    }>('/api/intelligence/digital-twin/save', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  getSimulationScenarios: () =>
+    request<{ scenarios: SimulationScenario[] }>('/api/intelligence/digital-twin/scenarios'),
+
+  deleteSimulationScenario: (id: string) =>
+    request<{ status: string; deleted: string }>(`/api/intelligence/digital-twin/scenarios/${id}`, {
+      method: 'DELETE'
+    }),
+
+  getPayrollForecast: (months: number = 4) =>
+    request<PayrollForecastData>(`/api/intelligence/forecast?months=${months}`),
+
+  getAnomalyRadar: (periodId?: string) =>
+    request<AnomalyRadarData>(periodId ? `/api/intelligence/anomalies?period_id=${encodeURIComponent(periodId)}` : '/api/intelligence/anomalies'),
+
+  explainPayslip: (req: {
+    employee_id?: string;
+    current_period_id: string;
+    comparison_period_id?: string;
+    question?: string;
+  }) =>
+    request<ExplainPayslipResult>('/api/intelligence/explain-payslip', {
+      method: 'POST',
+      body: JSON.stringify(req)
+    }),
+
+  getWorkflowTasks: () =>
+    request<{ tasks: HRWorkflowTaskItem[] }>('/api/intelligence/workflow/tasks'),
+
+  reviewWorkflowTask: (taskId: string, action: 'approve' | 'reject') =>
+    request<{
+      status: string;
+      task_id: string;
+      new_status: string;
+      approved_by: string;
+    }>(`/api/intelligence/workflow/tasks/${taskId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action })
     })
 };
 

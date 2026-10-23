@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays,
   FileSpreadsheet, Calculator, ShieldAlert, BotMessageSquare,
-  Receipt, Settings, FileBarChart, ChevronRight
+  Receipt, Settings, FileBarChart, ChevronRight, Sparkles
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -11,6 +11,8 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
   openDiscrepanciesCount?: number;
   userRole?: UserRole;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -18,6 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   openDiscrepanciesCount = 4,
   userRole = 'admin',
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
   const isEmployee = userRole === 'employee';
 
@@ -26,6 +30,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'dashboard',
       label: 'Overview',
       icon: LayoutDashboard,
+      roles: ['admin', 'payroll_admin', 'employee'],
+    },
+    {
+      id: 'intelligence',
+      label: 'Intelligence Engine',
+      icon: Sparkles,
+      badge: 'PRO',
+      badgeColor: 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold',
       roles: ['admin', 'payroll_admin', 'employee'],
     },
     {
@@ -90,14 +102,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     item.roles.includes(userRole || 'admin')
   );
 
-  return (
-    <aside className="w-60 bg-white border-r border-slate-200 flex flex-col justify-between select-none no-print shrink-0 min-h-[calc(100vh-53px)]">
-      <div className="py-4 px-3">
+  const renderNavContent = () => (
+    <div className="py-4 px-3 flex-1 flex flex-col justify-between">
+      <div>
         <div className="px-3 pb-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
           {isEmployee ? 'Self-Service' : 'Menu'}
         </div>
 
-        <nav className="space-y-0.5">
+        <nav className="space-y-0.5" aria-label="Main Navigation">
           {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -105,8 +117,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`cursor-pointer w-full flex items-center justify-between px-3 py-2 rounded-md text-xs transition-colors ${
+                onClick={() => {
+                  onSelectTab(item.id);
+                  onCloseMobile?.();
+                }}
+                className={`cursor-pointer w-full flex items-center justify-between px-3 py-2 rounded-md text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 ${
                   isActive
                     ? 'bg-slate-100 text-slate-900 font-semibold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-normal'
@@ -137,10 +152,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Subtle enterprise footer */}
-      <div className="p-3 border-t border-slate-100 text-[11px] text-slate-400">
+      <div className="p-3 border-t border-slate-100 text-[11px] text-slate-400 mt-4">
         <p className="font-medium text-slate-600">PayPilot HCM v1.0</p>
         <p className="text-[10px] text-slate-400">Indian Statutory Engine</p>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (lg+) */}
+      <aside className="hidden lg:flex w-60 bg-white border-r border-slate-200 flex-col justify-between select-none no-print shrink-0 min-h-[calc(100vh-53px)]">
+        {renderNavContent()}
+      </aside>
+
+      {/* Mobile Drawer (< lg) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex no-print">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-fade-in"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          <aside className="relative w-64 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-slide-in">
+            <div className="p-3 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900">Navigation Menu</span>
+              <button
+                onClick={onCloseMobile}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                aria-label="Close navigation menu"
+              >
+                ✕
+              </button>
+            </div>
+            {renderNavContent()}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };

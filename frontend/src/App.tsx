@@ -6,6 +6,7 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { AuthModal } from './components/AuthModal';
 import { MarketingLandingPage } from './pages/MarketingLandingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { IntelligenceCenterPage } from './pages/IntelligenceCenterPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { LeavePage } from './pages/LeavePage';
@@ -22,17 +23,36 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [demoUsers, setDemoUsers] = useState<User[]>([]);
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [currentView, setCurrentView] = useState<'marketing' | 'app'>('app'); // Defaults to full working app with live demo data
+  const [currentView, setCurrentView] = useState<'marketing' | 'app'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'marketing' || window.location.hash.includes('marketing')) {
+        return 'marketing';
+      }
+    }
+    return 'app';
+  });
   const [openDiscrepanciesCount, setOpenDiscrepanciesCount] = useState<number>(4);
   const [isGuidedDemoOpen, setIsGuidedDemoOpen] = useState<boolean>(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [authModalPlan, setAuthModalPlan] = useState<string>('free_trial');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     initApp();
+
+    const handleHash = () => {
+      if (window.location.hash.includes('marketing')) {
+        setCurrentView('marketing');
+      } else if (window.location.hash.includes('app')) {
+        setCurrentView('app');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
   const initApp = async () => {
@@ -95,7 +115,12 @@ export const App: React.FC = () => {
     return (
       <>
         <MarketingLandingPage
-          onEnterApp={() => setCurrentView('app')}
+          onEnterApp={() => {
+            setCurrentView('app');
+            if (window.location.hash.includes('marketing')) {
+              window.history.pushState(null, '', window.location.pathname);
+            }
+          }}
           onOpenLogin={() => {
             setAuthModalMode('login');
             setIsAuthModalOpen(true);
@@ -134,11 +159,16 @@ export const App: React.FC = () => {
         onOpenGuidedDemo={() => setIsGuidedDemoOpen(true)}
         onResetData={handleResetData}
         onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
-        onNavigateLanding={() => setCurrentView('marketing')}
+        onNavigateLanding={() => {
+          setCurrentView('marketing');
+          window.location.hash = 'marketing';
+        }}
         onOpenAuth={() => {
           setAuthModalMode('login');
           setIsAuthModalOpen(true);
         }}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -148,6 +178,8 @@ export const App: React.FC = () => {
           onSelectTab={setCurrentTab}
           openDiscrepanciesCount={openDiscrepanciesCount}
           userRole={currentUser?.role}
+          isMobileOpen={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
         {/* Main Content Area */}
@@ -157,6 +189,13 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               onNavigateTab={setCurrentTab}
               onTriggerAudit={() => setCurrentTab('auditor')}
+            />
+          )}
+
+          {currentTab === 'intelligence' && (
+            <IntelligenceCenterPage
+              currentUser={currentUser}
+              onNavigateTab={setCurrentTab}
             />
           )}
 

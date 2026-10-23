@@ -315,3 +315,59 @@ class ContactInquiry(Base):
     inquiry_type = Column(String, default="demo_request") # demo_request, sales_inquiry, contact
     status = Column(String, default="new") # new, contacted, qualified, converted
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class SimulationScenario(Base):
+    __tablename__ = "simulation_scenarios"
+    id = Column(String, primary_key=True)
+    company_id = Column(String, ForeignKey("companies.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    base_period_id = Column(String, ForeignKey("payroll_periods.id"), nullable=False)
+    baseline_total_cost = Column(Float, default=0.0)
+    simulated_total_cost = Column(Float, default=0.0)
+    cost_delta = Column(Float, default=0.0)
+    cost_delta_pct = Column(Float, default=0.0)
+    parameters_json = Column(Text, nullable=False)
+    created_by = Column(String, nullable=False)
+    status = Column(String, default="draft") # draft, reviewed, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SimulationItem(Base):
+    __tablename__ = "simulation_items"
+    id = Column(String, primary_key=True)
+    scenario_id = Column(String, ForeignKey("simulation_scenarios.id"), nullable=False)
+    company_id = Column(String, ForeignKey("companies.id"), nullable=False)
+    employee_id = Column(String, nullable=True)
+    employee_name = Column(String, nullable=False)
+    department = Column(String, nullable=False)
+    change_type = Column(String, default="salary_hike") # salary_hike, new_hire, bonus, allowance
+    old_gross = Column(Float, default=0.0)
+    new_gross = Column(Float, default=0.0)
+    simulated_basic = Column(Float, default=0.0)
+    simulated_pf = Column(Float, default=0.0)
+    simulated_esi = Column(Float, default=0.0)
+    simulated_pt = Column(Float, default=0.0)
+    simulated_tds = Column(Float, default=0.0)
+    simulated_net = Column(Float, default=0.0)
+    simulated_employer_cost = Column(Float, default=0.0)
+    cost_delta = Column(Float, default=0.0)
+
+class HRWorkflowTask(Base):
+    __tablename__ = "hr_workflow_tasks"
+    id = Column(String, primary_key=True)
+    company_id = Column(String, ForeignKey("companies.id"), nullable=False)
+    task_type = Column(String, nullable=False) # onboarding_checklist, document_reminder, salary_hike_approval, payroll_approval, tax_declaration_notice
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    target_employee_id = Column(String, nullable=True)
+    target_employee_name = Column(String, nullable=True)
+    severity = Column(String, default="MEDIUM") # CRITICAL, HIGH, MEDIUM, LOW
+    status = Column(String, default="pending_approval") # pending_approval, approved, rejected, completed
+    requires_approval = Column(Boolean, default=True)
+    consequential_action = Column(String, nullable=True)
+    payload_json = Column(Text, nullable=True)
+    created_by = Column(String, default="system_ai_agent")
+    approved_by = Column(String, nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
